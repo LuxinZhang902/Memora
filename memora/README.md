@@ -2,6 +2,18 @@
 
 **Mission:** Make personal memories and life admin instantly answerable—with verifiable evidence—while staying private by default.
 
+![Memora Interface](docs/images/memora-screenshot.png)
+*Memora's hybrid search finding relevant documents through semantic understanding*
+
+## Features
+
+- 🎤 **Voice-First Interface** - Speak naturally or type your questions
+- 🔍 **Hybrid Search** - Combines keyword (BM25) + semantic vector search for accurate results
+- 📄 **File Content Search** - Searches inside uploaded documents (PDFs, DOCX, images with OCR)
+- 🎯 **Grounded Answers** - AI responses cite specific files and content
+- 🔒 **Private by Default** - All data stored securely with user isolation
+- 📎 **Evidence Gallery** - View source documents that support each answer
+
 ## Quick Start
 
 ### Prerequisites
@@ -82,6 +94,8 @@
 
 ## Architecture
 
+### Query Flow
+
 ```
 User speaks → STT (ElevenLabs)
             ↓
@@ -89,24 +103,77 @@ User speaks → STT (ElevenLabs)
             ↓
     OpenAI planner → QueryPlan JSON
             ↓
-    Elasticsearch search (user_id filter, lexical + future hybrid kNN)
+    Hybrid Search (Elasticsearch)
+    ├─ Moments Index (BM25 + Vector)
+    └─ File Contents Index (BM25 + Vector)
             ↓
-    Top moment + artifacts[]
+    Result Fusion (score-based ranking)
+            ↓
+    Top moment + artifacts[] + file content
             ↓
     GCS signed URLs (10 min TTL)
             ↓
-    OpenAI composer → 2-sentence answer
+    OpenAI composer → 2-sentence answer (with file context)
             ↓
     Frontend: AnswerCard + EvidenceGallery
 ```
+
+### Hybrid Search Implementation
+
+Memora uses a sophisticated hybrid search that combines:
+
+1. **Keyword Search (BM25)** - Traditional text matching with fuzzy search for typos
+2. **Semantic Search (Vector)** - Understands meaning using embeddings (nomic-embed-text-v1.5)
+3. **Cross-Index Search** - Searches both moments and file contents simultaneously
+4. **Score Fusion** - Ranks results by combined relevance score
+
+**Example Query Flow:**
+```
+Query: "When did I renew my driver license?"
+  ↓
+[ES] ========== HYBRID SEARCH STARTING ==========
+[ES] Query text: When is the last time I renew my driver license?
+[ES] Has query vector: true
+[ES] DSL saved to: logs/hybrid-search-2025-10-10T21-53-28-176Z.json
+  ↓
+[ES] ========== HYBRID SEARCH RESULTS ==========
+[ES] Found: 0 moments, 1 files
+[ES] *** TOP FILE MATCH ***
+[ES] File name: my_note_driver_lisence.docx
+[ES] Score: 0.79
+[ES] Text preview: May.6 Preparation for driver license...
+  ↓
+[ES] *** RETURNING FILE-BASED RESULT ***
+[ES] File content included: true
+  ↓
+[ComposeAnswer] ========== COMPOSING ANSWER ==========
+[ComposeAnswer] *** FILE CONTENT FOUND ***
+[ComposeAnswer] File name: my_note_driver_lisence.docx
+[ComposeAnswer] Text preview: May.6 Preparation for driver license
+                              Old driver license
+                              Proof of current living address
+  ↓
+Answer: "You prepared for your driver license renewal on May 6, 
+         as documented in 'my_note_driver_lisence.docx'."
+```
+
+**Key Features:**
+- Finds semantically related content even without exact keyword matches
+- Searches extracted text from PDFs, DOCX, and images (OCR)
+- Generates embeddings for semantic similarity
+- Falls back gracefully if vector search unavailable
+- Logs detailed search flow for debugging
+
+See [HYBRID_SEARCH_IMPLEMENTATION.md](./HYBRID_SEARCH_IMPLEMENTATION.md) for technical details.
 
 ### Tech Stack
 
 - **Frontend:** Next.js 14 (App Router) + React + TypeScript + Tailwind
 - **Backend:** Next.js API routes (server-side orchestration)
-- **AI/Audio:** ElevenLabs STT/TTS, OpenAI (planner + composer), Fireworks embeddings
-- **Search:** Elasticsearch 8 (lexical first; designed for hybrid kNN later)
-- **Storage:** Google Cloud Storage (private, signed URLs)
+- **AI/Audio:** ElevenLabs STT/TTS, DedalusLabs LLM (planner + composer), Fireworks embeddings (nomic-embed-text-v1.5)
+- **Search:** Elasticsearch 8 with hybrid search (BM25 + vector similarity via cosineSimilarity)
+- **Storage:** Google Cloud Storage (private, signed URLs with 10min TTL)
+- **Content Extraction:** PDF.js (PDFs), Mammoth (DOCX), EXIF-parser (images), DedalusLabs Vision (OCR)
 - **Security:** CSP headers, server-side ES queries, user_id filter, GCS private bucket
 
 ## Security Defaults
@@ -184,14 +251,25 @@ memora/
 └── SECURITY.md               # Security posture + best practices
 ```
 
-## Roadmap / Stretch Goals
+## Roadmap
 
-- [ ] **Hybrid retrieval:** kNN on `vector` field + lexical requery by IDs
+### ✅ Completed
+- [x] **Hybrid retrieval:** BM25 + vector similarity search across moments and file contents
+- [x] **File content extraction:** PDFs, DOCX, images with OCR
+- [x] **Semantic search:** Vector embeddings for meaning-based matching
+- [x] **File management:** Upload, view, edit, delete files with metadata
+
+### 🚧 In Progress
+- [ ] **User ID consistency:** Fix DEMO_USER_ID vs authenticated user mismatch
+- [ ] **Reranking:** Add reranker model for better result ordering
+
+### 📋 Planned
 - [ ] **ElevenLabs TTS:** "Play" button for final answer (store MP3 in GCS)
-- [ ] **Real auth:** Replace `DEMO_USER_ID` with Convex auth or NextAuth
+- [ ] **Real auth:** Replace `DEMO_USER_ID` with proper authentication
 - [ ] **Multi-user:** Add user management, session tokens
 - [ ] **Mobile app:** React Native + same backend
 - [ ] **Incremental ingestion:** Watch folder, auto-ingest photos/files
+- [ ] **Multi-modal search:** CLIP embeddings for image content search
 
 ## License
 

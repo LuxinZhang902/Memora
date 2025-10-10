@@ -118,7 +118,23 @@ export default function Page() {
         body: JSON.stringify({ artifacts: execJson.artifacts }),
       });
       const evJson = await evRes.json();
-      setEvidence(evJson.evidence || []);
+      
+      // Enrich evidence with highlights from file content
+      let enrichedEvidence = evJson.evidence || [];
+      if (execJson.fileContent && execJson.highlights?.length > 0) {
+        enrichedEvidence = enrichedEvidence.map((item: EvidenceItem) => {
+          // Match evidence item with file content by name
+          if (item.name === execJson.fileContent.file_name) {
+            return {
+              ...item,
+              highlight: execJson.highlights[0] // Use first highlight
+            };
+          }
+          return item;
+        });
+      }
+      
+      setEvidence(enrichedEvidence);
 
       const ansRes = await fetch("/api/compose", {
         method: "POST",

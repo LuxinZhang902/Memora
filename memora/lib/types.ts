@@ -37,6 +37,7 @@ export type EvidenceItem = {
   signedUrl: string;
   thumbUrl?: string;
   mime?: string;
+  highlight?: string;  // Highlighted excerpt from document/PDF
 };
 
 export type GroundedAnswer = {

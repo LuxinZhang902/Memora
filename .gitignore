@@ -4,6 +4,9 @@ test_docs/
 test_audio/
 test_doc/
 
+# Documentation images
+memora/docs/images/
+
 # Google Cloud credentials
 *.json
 *-gcs-key.json
