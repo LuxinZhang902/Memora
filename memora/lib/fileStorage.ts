@@ -113,8 +113,8 @@ export async function createFileContentIndex() {
             },
           },
           
-          // Vector
-          content_vector: { type: 'dense_vector', dims: 1024, similarity: 'cosine' },
+          // Vector (nomic-embed-text-v1.5 produces 768 dimensions)
+          content_vector: { type: 'dense_vector', dims: 768, similarity: 'cosine' },
           
           // Status
           extraction_status: { type: 'keyword' },

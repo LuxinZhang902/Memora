@@ -4,6 +4,7 @@ import { setUser } from '@/lib/user';
 import type { User } from '@/lib/auth';
 
 type AuthMode = 'login' | 'signup' | 'reset';
+type SignupStep = 'email' | 'code' | 'password';
 
 interface Props {
   isOpen: boolean;
@@ -13,9 +14,11 @@ interface Props {
 
 export default function AuthModal({ isOpen, onClose, onSuccess }: Props) {
   const [mode, setMode] = useState<AuthMode>('login');
-  const [step, setStep] = useState<'email' | 'code'>('email');
+  const [signupStep, setSignupStep] = useState<SignupStep>('email');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
+  const [verifiedEmail, setVerifiedEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -46,7 +49,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: Props) {
       }
 
       setMessage('✅ Code sent! Check your email (and console for demo)');
-      setStep('code');
+      setSignupStep('code');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -76,6 +79,46 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: Props) {
         throw new Error(data.error || 'Invalid code');
       }
 
+      // For signup, move to password step
+      if (mode === 'signup') {
+        setVerifiedEmail(email);
+        setSignupStep('password');
+        setMessage('✅ Email verified! Now set your password');
+      } else {
+        // For reset, save user and close
+        setUser(data.user);
+        onSuccess(data.user);
+        onClose();
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordLogin = async () => {
+    if (!email || !password) {
+      setError('Please enter your email and password');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/auth/password-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+
       // Save user to localStorage
       setUser(data.user);
       onSuccess(data.user);
@@ -87,10 +130,50 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: Props) {
     }
   };
 
+  const handleCompleteSignup = async () => {
+    if (!password) {
+      setError('Please enter a password');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/auth/password-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: verifiedEmail, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Signup failed');
+      }
+
+      // Save user to localStorage and login
+      setUser(data.user);
+      onSuccess(data.user);
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const resetForm = () => {
-    setStep('email');
+    setSignupStep('email');
     setEmail('');
+    setPassword('');
     setCode('');
+    setVerifiedEmail('');
     setError('');
     setMessage('');
   };
@@ -109,11 +192,12 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: Props) {
   };
 
   const getModeDescription = () => {
-    switch (mode) {
-      case 'login': return 'Enter your email to receive a login code';
-      case 'signup': return 'Enter your email to create your account';
-      case 'reset': return 'Enter your email to reset your password';
+    if (mode === 'signup') {
+      if (signupStep === 'email') return 'Enter your email to get started';
+      if (signupStep === 'code') return 'Enter the verification code sent to your email';
+      if (signupStep === 'password') return 'Create a password for your account';
     }
+    return mode === 'login' ? 'Enter your email and password' : 'Enter your email to reset your password';
   };
 
   return (
@@ -160,8 +244,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: Props) {
           </button>
         </div>
 
-        {/* Email Step */}
-        {step === 'email' && (
+        {/* Login Form */}
+        {mode === 'login' && (
           <div className="space-y-4">
             <div>
               <label className="text-sm text-gray-300 font-semibold mb-2 block">
@@ -174,7 +258,61 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: Props) {
                 placeholder="you@example.com"
                 className="w-full bg-slate-950/60 border-2 border-slate-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
                 disabled={loading}
-                onKeyPress={(e) => e.key === 'Enter' && handleSendCode()}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm text-gray-300 font-semibold mb-2 block">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-slate-950/60 border-2 border-slate-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                disabled={loading}
+                onKeyPress={(e) => e.key === 'Enter' && email && password && handlePasswordLogin()}
+              />
+            </div>
+
+            <button
+              onClick={handlePasswordLogin}
+              disabled={loading || !email || !password}
+              className={`w-full px-6 py-3 rounded-lg font-medium transition-all ${
+                loading || !email || !password
+                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white glow-purple'
+              }`}
+            >
+              {loading ? '⏳ Logging in...' : '✓ Login'}
+            </button>
+
+            <button
+              onClick={() => switchMode('reset')}
+              className="w-full text-sm text-gray-400 hover:text-purple-400 transition-colors"
+              disabled={loading}
+            >
+              Forgot your password?
+            </button>
+          </div>
+        )}
+
+        {/* Signup - Email Step */}
+        {mode === 'signup' && signupStep === 'email' && (
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-gray-300 font-semibold mb-2 block">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full bg-slate-950/60 border-2 border-slate-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                disabled={loading}
+                onKeyPress={(e) => e.key === 'Enter' && email && handleSendCode()}
               />
             </div>
 
@@ -189,21 +327,11 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: Props) {
             >
               {loading ? '⏳ Sending...' : '📧 Send Verification Code'}
             </button>
-
-            {mode === 'login' && (
-              <button
-                onClick={() => switchMode('reset')}
-                className="w-full text-sm text-gray-400 hover:text-purple-400 transition-colors"
-                disabled={loading}
-              >
-                Forgot your password?
-              </button>
-            )}
           </div>
         )}
 
-        {/* Code Step */}
-        {step === 'code' && (
+        {/* Signup - Code Verification Step */}
+        {mode === 'signup' && signupStep === 'code' && (
           <div className="space-y-4">
             <div>
               <label className="text-sm text-gray-300 font-semibold mb-2 block">
@@ -250,6 +378,41 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: Props) {
               disabled={loading}
             >
               Resend code
+            </button>
+          </div>
+        )}
+
+        {/* Signup - Password Step */}
+        {mode === 'signup' && signupStep === 'password' && (
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-gray-300 font-semibold mb-2 block">
+                Create Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-slate-950/60 border-2 border-slate-700 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                disabled={loading}
+                onKeyPress={(e) => e.key === 'Enter' && password && handleCompleteSignup()}
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Password must be at least 8 characters long
+              </p>
+            </div>
+
+            <button
+              onClick={handleCompleteSignup}
+              disabled={loading || !password || password.length < 8}
+              className={`w-full px-6 py-3 rounded-lg font-medium transition-all ${
+                loading || !password || password.length < 8
+                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white glow-purple'
+              }`}
+            >
+              {loading ? '⏳ Creating Account...' : '✓ Create Account'}
             </button>
           </div>
         )}

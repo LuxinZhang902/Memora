@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ingestFile, createFileContentIndex } from '@/lib/fileStorage';
 import { upsertMoment, indexNameFromPrefix } from '@/lib/es';
+import { Buffer } from 'buffer';
 
 export async function POST(request: NextRequest) {
   try {
@@ -93,13 +94,23 @@ export async function POST(request: NextRequest) {
         textLength: result.extractionResult?.text?.length || 0,
         processingTimeMs: result.extractionResult?.processingTimeMs,
         error: result.extractionResult?.error,
+        metadata: result.extractionResult?.metadata,
       },
       artifact: result.artifactReference,
+      gpsLocation: metadata?.gps_latitude && metadata?.gps_longitude ? {
+        lat: metadata.gps_latitude,
+        lon: metadata.gps_longitude,
+      } : null,
     });
   } catch (error: any) {
     console.error('[IngestFile] Error:', error);
+    console.error('[IngestFile] Stack:', error.stack);
     return NextResponse.json(
-      { error: 'File ingestion failed', details: error.message },
+      { 
+        error: 'File ingestion failed', 
+        details: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      },
       { status: 500 }
     );
   }

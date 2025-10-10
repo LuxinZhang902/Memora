@@ -5,6 +5,7 @@
  */
 
 import { Client } from '@elastic/elasticsearch';
+import crypto from 'crypto';
 
 const client = new Client({
   node: process.env.ES_HOST || 'http://localhost:9200',
@@ -25,6 +26,7 @@ export interface User {
   user_id: string;
   email: string;
   name?: string;
+  password_hash?: string;
   created_at: string;
   last_login?: string;
   is_verified: boolean;
@@ -55,6 +57,7 @@ export async function createAuthIndices() {
             user_id: { type: 'keyword' },
             email: { type: 'keyword' },
             name: { type: 'text' },
+            password_hash: { type: 'keyword' },
             created_at: { type: 'date' },
             last_login: { type: 'date' },
             is_verified: { type: 'boolean' },
@@ -85,6 +88,22 @@ export async function createAuthIndices() {
     });
     console.log('[Auth] Created passcodes index');
   }
+}
+
+// ============================================================================
+// PASSWORD UTILITIES
+// ============================================================================
+
+function hashPassword(password: string): string {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password: string, storedHash: string): boolean {
+  const [salt, hash] = storedHash.split(':');
+  const verifyHash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+  return hash === verifyHash;
 }
 
 // ============================================================================
@@ -245,6 +264,8 @@ export async function verifyPasscode(
     const passcodeDoc = response.hits.hits[0];
     const passcode = passcodeDoc._source as Passcode;
 
+    console.log(`[Auth] Verifying passcode type: ${passcode.type} for ${normalizedEmail}`);
+
     // Mark passcode as used
     await client.update({
       index: PASSCODES_INDEX,
@@ -255,16 +276,18 @@ export async function verifyPasscode(
       refresh: true,
     });
 
-    // Get or create user
+    // For signup, just verify the code without creating user
+    // User will be created when they set their password
+    if (passcode.type === 'signup') {
+      console.log(`[Auth] Email verified for signup: ${normalizedEmail}`);
+      return { success: true };
+    }
+
+    // For login/reset, get existing user
     let user = await getUserByEmail(normalizedEmail);
     
     if (!user) {
-      // Create new user for signup
-      if (passcode.type === 'signup') {
-        user = await createUser(normalizedEmail);
-      } else {
-        return { success: false, error: 'User not found. Please sign up first.' };
-      }
+      return { success: false, error: 'User not found. Please sign up first.' };
     }
 
     // Update last login
@@ -351,6 +374,110 @@ export async function getUserById(userId: string): Promise<User | null> {
 // ============================================================================
 // LEGACY SUPPORT
 // ============================================================================
+
+// ============================================================================
+// PASSWORD-BASED AUTHENTICATION
+// ============================================================================
+
+export async function signupWithPassword(
+  email: string,
+  password: string
+): Promise<{ success: boolean; user?: User; error?: string }> {
+  try {
+    await createAuthIndices();
+    const normalizedEmail = email.toLowerCase();
+
+    console.log(`[Auth] Attempting password signup for: ${normalizedEmail}`);
+
+    // Check if user already exists
+    const existingUser = await getUserByEmail(normalizedEmail);
+    if (existingUser) {
+      console.log(`[Auth] User already exists: ${normalizedEmail}, has password: ${!!existingUser.password_hash}`);
+      return { success: false, error: 'User already exists. Please login instead.' };
+    }
+
+    // Validate password
+    if (password.length < 8) {
+      return { success: false, error: 'Password must be at least 8 characters long' };
+    }
+
+    // Create user with password
+    const userId = 'user-' + Math.random().toString(36).substr(2, 9);
+    const now = new Date().toISOString();
+    const passwordHash = hashPassword(password);
+
+    const user: User = {
+      user_id: userId,
+      email: normalizedEmail,
+      password_hash: passwordHash,
+      created_at: now,
+      last_login: now,
+      is_verified: true, // Auto-verify for password signups
+    };
+
+    await client.index({
+      index: USERS_INDEX,
+      id: userId,
+      body: user,
+      refresh: true,
+    });
+
+    console.log(`[Auth] Created new user with password: ${email}`);
+    
+    // Return user without password_hash
+    const { password_hash, ...userWithoutPassword } = user;
+    return { success: true, user: userWithoutPassword };
+  } catch (error: any) {
+    console.error('[Auth] Signup failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function loginWithPassword(
+  email: string,
+  password: string
+): Promise<{ success: boolean; user?: User; error?: string }> {
+  try {
+    const normalizedEmail = email.toLowerCase();
+
+    // Get user
+    const user = await getUserByEmail(normalizedEmail);
+    if (!user) {
+      return { success: false, error: 'Invalid email or password' };
+    }
+
+    // Check if user has a password set
+    if (!user.password_hash) {
+      return { success: false, error: 'Please use email code login for this account' };
+    }
+
+    // Verify password
+    if (!verifyPassword(password, user.password_hash)) {
+      return { success: false, error: 'Invalid email or password' };
+    }
+
+    // Update last login
+    await client.update({
+      index: USERS_INDEX,
+      id: user.user_id,
+      body: {
+        doc: {
+          last_login: new Date().toISOString(),
+        },
+      },
+      refresh: true,
+    });
+
+    console.log(`[Auth] User ${user.email} logged in with password`);
+    
+    // Return user without password_hash
+    const { password_hash, ...userWithoutPassword } = user;
+    return { success: true, user: userWithoutPassword };
+  } catch (error: any) {
+    console.error('[Auth] Login failed:', error);
+    return { success: false, error: error.message };
+  }
+}
 
 export function requireUser(): string {
   const user = process.env.DEMO_USER_ID || 'u_demo';

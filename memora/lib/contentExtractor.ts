@@ -19,7 +19,15 @@ import { FileCategory, FileType, FileMetadata } from './fileTypes';
  */
 export async function extractExifMetadata(buffer: Buffer): Promise<Partial<FileMetadata>> {
   try {
-    const exifParser = require('exif-parser');
+    // Try to load exif-parser, gracefully handle if not installed
+    let exifParser;
+    try {
+      exifParser = require('exif-parser');
+    } catch (e) {
+      console.log('[EXIF] exif-parser not installed, skipping EXIF extraction');
+      return {};
+    }
+    
     const parser = exifParser.create(buffer);
     const result = parser.parse();
     
@@ -317,18 +325,24 @@ export async function extractDocxContent(buffer: Buffer): Promise<ExtractionResu
   const startTime = Date.now();
   
   try {
-    // TODO: Implement with mammoth library
-    // const mammoth = require('mammoth');
-    // const result = await mammoth.extractRawText({ buffer });
+    const mammoth = require('mammoth');
+    const result = await mammoth.extractRawText({ buffer });
     
-    console.log('[DOCX] Extraction not yet implemented');
+    const text = result.value?.trim() || '';
+    const wordCount = text.split(/\s+/).filter(Boolean).length;
+    
+    console.log(`[DOCX] Extracted ${wordCount} words from DOCX`);
     
     return {
-      success: false,
-      error: 'DOCX extraction not implemented. Install mammoth library.',
+      success: true,
+      text,
+      metadata: {
+        word_count: wordCount,
+      },
       processingTimeMs: Date.now() - startTime,
     };
   } catch (error: any) {
+    console.error('[DOCX] Extraction failed:', error);
     return {
       success: false,
       error: `DOCX extraction failed: ${error.message}`,
