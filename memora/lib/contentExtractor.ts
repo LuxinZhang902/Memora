@@ -16,9 +16,23 @@ import { FileCategory, FileType, FileMetadata } from './fileTypes';
 
 /**
  * Extract EXIF metadata from images including GPS location
+ * Note: EXIF only works with JPEG files, not PNG/GIF/etc
  */
-export async function extractExifMetadata(buffer: Buffer): Promise<Partial<FileMetadata>> {
+export async function extractExifMetadata(buffer: Buffer, mimeType?: string): Promise<Partial<FileMetadata>> {
   try {
+    // EXIF works with JPEG and HEIC files
+    const supportsExif = mimeType && (
+      mimeType.includes('jpeg') || 
+      mimeType.includes('jpg') || 
+      mimeType.includes('heic') || 
+      mimeType.includes('heif')
+    );
+    
+    if (!supportsExif) {
+      console.log(`[EXIF] Skipping EXIF extraction for ${mimeType} (only works with JPEG/HEIC)`);
+      return {};
+    }
+
     // Try to load exif-parser, gracefully handle if not installed
     let exifParser;
     try {
@@ -151,20 +165,25 @@ export async function extractImageContent(buffer: Buffer, mimeType: string): Pro
   
   try {
     // Extract EXIF metadata first (including GPS location)
-    const exifMetadata = await extractExifMetadata(buffer);
+    const exifMetadata = await extractExifMetadata(buffer, mimeType);
     
-    // Option 1: Use OpenAI Vision API (GPT-4V)
-    const openaiKey = process.env.OPENAI_API_KEY;
-    if (openaiKey) {
-      const ocrResult = await extractImageWithOpenAI(buffer, mimeType);
-      // Merge EXIF metadata with OCR result
-      return {
-        ...ocrResult,
-        metadata: {
-          ...ocrResult.metadata,
-          ...exifMetadata,
-        },
-      };
+    // Option 1: Use DedalusLabs Vision API
+    const dedalusKey = process.env.DEDALUS_API_KEY;
+    if (dedalusKey) {
+      try {
+        const ocrResult = await extractImageWithDedalus(buffer, mimeType);
+        // Merge EXIF metadata with OCR result
+        return {
+          ...ocrResult,
+          metadata: {
+            ...ocrResult.metadata,
+            ...exifMetadata,
+          },
+        };
+      } catch (error: any) {
+        console.log('[IMAGE] DedalusLabs Vision failed, continuing without OCR:', error.message);
+        // Continue to fallback below
+      }
     }
     
     // Option 2: Use Google Vision API
@@ -172,13 +191,12 @@ export async function extractImageContent(buffer: Buffer, mimeType: string): Pro
     // const client = new vision.ImageAnnotatorClient();
     // const [result] = await client.textDetection(buffer);
     
-    // If no OCR is available, still return EXIF metadata
+    // If no OCR is available, still return success with EXIF metadata
     console.log('[IMAGE] OCR not configured, returning EXIF metadata only');
     
     return {
-      success: Object.keys(exifMetadata).length > 0,
+      success: true, // Mark as success even without OCR
       metadata: exifMetadata as FileMetadata,
-      error: Object.keys(exifMetadata).length === 0 ? 'No EXIF data found' : undefined,
       processingTimeMs: Date.now() - startTime,
     };
   } catch (error: any) {
@@ -191,48 +209,14 @@ export async function extractImageContent(buffer: Buffer, mimeType: string): Pro
 }
 
 /**
- * Extract text from image using OpenAI Vision API
+ * Extract text from image using DedalusLabs Vision API
  */
-async function extractImageWithOpenAI(buffer: Buffer, mimeType: string): Promise<ExtractionResult> {
+async function extractImageWithDedalus(buffer: Buffer, mimeType: string): Promise<ExtractionResult> {
   const startTime = Date.now();
   
   try {
-    const base64Image = buffer.toString('base64');
-    const dataUrl = `data:${mimeType};base64,${base64Image}`;
-    
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Extract all visible text from this image. Return only the text, no commentary.',
-              },
-              {
-                type: 'image_url',
-                image_url: { url: dataUrl },
-              },
-            ],
-          },
-        ],
-        max_tokens: 1000,
-      }),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    const extractedText = data.choices?.[0]?.message?.content || '';
+    const { extractImageText } = await import('./dedalus');
+    const extractedText = await extractImageText(buffer, mimeType);
     
     return {
       success: true,

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { planQuery as llmPlan } from '../openai';
+import { planQuery } from '../dedalus';
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const plan = await llmPlan({ text: body.text || '' });
+  const plan = await planQuery({ text: body.text || '' });
   return NextResponse.json({ plan });
 }

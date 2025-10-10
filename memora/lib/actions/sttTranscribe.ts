@@ -11,14 +11,14 @@ export async function POST(request: NextRequest) {
     
     console.log(`[STT] Processing file: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
     
-    // Try OpenAI Whisper first (more reliable), fallback to ElevenLabs
-    const openaiKey = process.env.OPENAI_API_KEY || '';
+    // Try DedalusLabs first, fallback to ElevenLabs
+    const dedalusKey = process.env.DEDALUS_API_KEY || '';
     const elevenlabsKey = process.env.ELEVENLABS_API_KEY || '';
     
-    if (!openaiKey && !elevenlabsKey) {
+    if (!dedalusKey && !elevenlabsKey) {
       return NextResponse.json({ 
         error: 'No STT API key configured',
-        details: 'Please add OPENAI_API_KEY or ELEVENLABS_API_KEY to .env.local'
+        details: 'Please add DEDALUS_API_KEY or ELEVENLABS_API_KEY to .env.local'
       }, { status: 500 });
     }
     
@@ -31,32 +31,22 @@ export async function POST(request: NextRequest) {
       }, { status: 413 });
     }
     
-    // Try OpenAI Whisper first
-    if (openaiKey) {
+    // Try DedalusLabs first
+    if (dedalusKey) {
       try {
-        console.log('[STT] Using OpenAI Whisper...');
-        const formData = new FormData();
-        formData.append('file', file, file.name);
-        formData.append('model', 'whisper-1');
+        console.log('[STT] Using DedalusLabs...');
+        const { transcribeAudio } = await import('../dedalus');
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const text = await transcribeAudio(buffer, file.name);
         
-        const out = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${openaiKey}` },
-          body: formData,
+        console.log('[STT] DedalusLabs success! Text:', text?.substring(0, 100));
+        return NextResponse.json({ 
+          text: text || '', 
+          language: 'en' 
         });
-        
-        if (out.ok) {
-          const json = await out.json();
-          console.log('[STT] OpenAI Whisper success! Text:', json?.text?.substring(0, 100));
-          return NextResponse.json({ 
-            text: json?.text || '', 
-            language: json?.language 
-          });
-        } else {
-          console.warn('[STT] OpenAI Whisper failed, trying ElevenLabs...');
-        }
       } catch (err) {
-        console.warn('[STT] OpenAI Whisper error, trying ElevenLabs...', err);
+        console.warn('[STT] DedalusLabs error, trying ElevenLabs...', err);
       }
     }
     

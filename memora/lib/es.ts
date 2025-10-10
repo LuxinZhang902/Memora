@@ -52,6 +52,8 @@ export async function searchMoments(params: { index: string; userId: string; pla
     aggs: undefined,
   } as any;
 
+  console.log('[ES] Elasticsearch Query:', JSON.stringify(dsl, null, 2));
+
   const res = await client.search({
     index: params.index,
     body: dsl,
