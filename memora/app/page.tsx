@@ -1,16 +1,17 @@
 "use client";
-import React, { useMemo, useState } from 'react';
-import MicButton from './components/MicButton';
-import AnswerCard from './components/AnswerCard';
-import EvidenceGallery from './components/EvidenceGallery';
-import DebugPanel from './components/DebugPanel';
-import type { EvidenceItem, GroundedAnswer, QueryPlan } from '@/lib/types';
+import React, { useMemo, useState } from "react";
+import MicButton from "./components/MicButton";
+import AnswerCard from "./components/AnswerCard";
+import EvidenceGallery from "./components/EvidenceGallery";
+import DebugPanel from "./components/DebugPanel";
+import BuildMemoryButton from "./components/BuildMemoryButton";
+import type { EvidenceItem, GroundedAnswer, QueryPlan } from "@/lib/types";
 
 export default function Page() {
   const [loading, setLoading] = useState(false);
-  const [text, setText] = useState<string>('');
+  const [text, setText] = useState<string>("");
   const [transcribing, setTranscribing] = useState(false);
-  const [transcriptionStatus, setTranscriptionStatus] = useState<string>('');
+  const [transcriptionStatus, setTranscriptionStatus] = useState<string>("");
   const [plan, setPlan] = useState<QueryPlan | undefined>();
   const [dsl, setDsl] = useState<any>();
   const [highlights, setHighlights] = useState<string[]>([]);
@@ -21,51 +22,57 @@ export default function Page() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     setTranscribing(true);
     setTranscriptionStatus(`Uploading ${file.name}...`);
-    setText('');
-    
+    setText("");
+
     try {
       const form = new FormData();
-      form.append('file', file);
-      
-      setTranscriptionStatus('Transcribing audio...');
-      const res = await fetch('/api/stt', { method: 'POST', body: form });
-      
+      form.append("file", file);
+
+      setTranscriptionStatus("Transcribing audio...");
+      const res = await fetch("/api/stt", { method: "POST", body: form });
+
       if (!res.ok) {
         const errorData = await res.json();
-        console.error('STT API error:', errorData);
-        setTranscriptionStatus(`Error: ${errorData.error || 'Transcription failed'}`);
-        alert(`Transcription failed: ${errorData.error || 'Unknown error'}\n${errorData.details || ''}`);
+        console.error("STT API error:", errorData);
+        setTranscriptionStatus(
+          `Error: ${errorData.error || "Transcription failed"}`
+        );
+        alert(
+          `Transcription failed: ${errorData.error || "Unknown error"}\n${
+            errorData.details || ""
+          }`
+        );
         return;
       }
-      
+
       const data = await res.json();
       if (data?.text) {
         // Simulate word-by-word display
-        const words = data.text.split(' ');
-        let currentText = '';
+        const words = data.text.split(" ");
+        let currentText = "";
         for (let i = 0; i < words.length; i++) {
-          currentText += (i > 0 ? ' ' : '') + words[i];
+          currentText += (i > 0 ? " " : "") + words[i];
           setText(currentText);
           setTranscriptionStatus(`Transcribed: ${i + 1}/${words.length} words`);
-          await new Promise(resolve => setTimeout(resolve, 50)); // 50ms delay per word
+          await new Promise((resolve) => setTimeout(resolve, 50)); // 50ms delay per word
         }
-        setTranscriptionStatus('Transcription complete! Running Q&A...');
+        setTranscriptionStatus("Transcription complete! Running Q&A...");
         await runQa(data.text);
-        setTranscriptionStatus('');
+        setTranscriptionStatus("");
       } else {
-        setTranscriptionStatus('No text found in audio');
+        setTranscriptionStatus("No text found in audio");
       }
     } catch (err) {
-      console.error('File upload STT error:', err);
+      console.error("File upload STT error:", err);
       setTranscriptionStatus(`Error: ${err}`);
       alert(`Upload error: ${err}`);
     } finally {
       setTranscribing(false);
       // Reset file input
-      e.target.value = '';
+      e.target.value = "";
     }
   };
 
@@ -78,24 +85,45 @@ export default function Page() {
     setAnswer(undefined);
     const t0 = performance.now();
     try {
-      const planRes = await fetch('/api/plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: q })});
+      const planRes = await fetch("/api/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: q }),
+      });
       const planJson = await planRes.json();
       setPlan(planJson.plan);
 
-      const execRes = await fetch('/api/exec', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: planJson.plan })});
+      const execRes = await fetch("/api/exec", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: planJson.plan }),
+      });
       const execJson = await execRes.json();
       setDsl(execJson.dsl);
       setHighlights(execJson.highlights || []);
 
-      const evRes = await fetch('/api/evidence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ artifacts: execJson.artifacts })});
+      const evRes = await fetch("/api/evidence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ artifacts: execJson.artifacts }),
+      });
       const evJson = await evRes.json();
       setEvidence(evJson.evidence || []);
 
-      const ansRes = await fetch('/api/compose', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q, hit: execJson.hit, highlights: execJson.highlights, evidence: evJson.evidence })});
+      const ansRes = await fetch("/api/compose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: q,
+          hit: execJson.hit,
+          highlights: execJson.highlights,
+          evidence: evJson.evidence,
+        }),
+      });
       const ansJson = await ansRes.json();
       setAnswer(ansJson.answer);
     } catch (e) {
-      console.error('QA flow error');
+      console.error("QA flow error");
     } finally {
       timings.total = Math.round(performance.now() - t0);
       setLoading(false);
@@ -115,13 +143,14 @@ export default function Page() {
 
       {/* Centered Layout - Before Results */}
       {!hasResults && (
-        <div className="min-h-screen flex items-center justify-center p-8 relative z-10">
-          <div className="max-w-4xl w-full space-y-12">
+        <div className="min-h-screen flex items-start justify-center pt-40 p-8 relative z-10">
+          <div className="max-w-4xl w-full space-y-10">
             {/* Header */}
             <div className="text-center space-y-6">
               <h1 className="text-7xl font-bold gradient-text">Memora</h1>
               <p className="text-gray-400 text-xl max-w-2xl mx-auto">
-                Make personal memories and life admin instantly answerable—with verifiable evidence—while staying private by default.
+                Make personal memories and life admin instantly answerable—with
+                verifiable evidence—while staying private by default.
               </p>
             </div>
 
@@ -129,41 +158,57 @@ export default function Page() {
             <div className="glass rounded-2xl p-8 space-y-4 glow">
               <div className="flex gap-3 items-center flex-wrap justify-center">
                 <MicButton onText={runQa} disabled={loading || transcribing} />
-                <label className={`px-6 py-3 rounded-xl font-medium cursor-pointer transition-all duration-300 ${
-                  transcribing 
-                    ? 'bg-gray-700 cursor-not-allowed opacity-50' 
-                    : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 glow-green'
-                } text-white`}>
-                  {transcribing ? '⏳ Processing...' : '🎵 Upload Audio'}
-                  <input type="file" accept="audio/*,.mp3,.wav,.m4a,.webm" onChange={handleFileUpload} className="hidden" disabled={loading || transcribing} />
+                <label
+                  className={`px-6 py-3 rounded-xl font-medium cursor-pointer transition-all duration-300 ${
+                    transcribing
+                      ? "bg-gray-700 cursor-not-allowed opacity-50"
+                      : "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 glow-green"
+                  } text-white`}
+                >
+                  {transcribing ? "⏳ Processing..." : "🎵 Upload Audio"}
+                  <input
+                    type="file"
+                    accept="audio/*,.mp3,.wav,.m4a,.webm"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    disabled={loading || transcribing}
+                  />
                 </label>
-                <input 
-                  className="flex-1 min-w-[350px] max-w-md glass border border-gray-700 rounded-xl px-5 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-center" 
-                  placeholder="When is the last time I renew my driver license?" 
-                  value={text} 
-                  onChange={(e) => setText(e.target.value)} 
+                <input
+                  className="flex-1 min-w-[350px] max-w-md glass border border-gray-700 rounded-xl px-5 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-center"
+                  placeholder="When is the last time I renew my driver license?"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
                   disabled={transcribing}
-                  onKeyDown={(e) => e.key === 'Enter' && text && !loading && !transcribing && runQa(text)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" &&
+                    text &&
+                    !loading &&
+                    !transcribing &&
+                    runQa(text)
+                  }
                 />
-                <button 
+                <button
                   className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
                     !text || loading || transcribing
-                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white glow-purple'
+                      ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                      : "bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white glow-purple"
                   }`}
-                  onClick={() => runQa(text)} 
+                  onClick={() => runQa(text)}
                   disabled={!text || loading || transcribing}
                 >
-                  {loading ? '🔍 Searching...' : '✨ Ask'}
+                  {loading ? "🔍 Searching..." : "✨ Ask"}
                 </button>
               </div>
-              
+
               {/* Transcription Status */}
               {transcriptionStatus && (
                 <div className="glass rounded-lg p-4 border border-blue-500/30 shimmer">
                   <div className="flex items-center justify-center gap-3">
                     <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>
-                    <span className="text-blue-400 font-medium">{transcriptionStatus}</span>
+                    <span className="text-blue-400 font-medium">
+                      {transcriptionStatus}
+                    </span>
                   </div>
                 </div>
               )}
@@ -178,6 +223,15 @@ export default function Page() {
                 </div>
               )}
             </div>
+
+            {/* Build Memory Button */}
+            <div className="flex justify-center">
+              <BuildMemoryButton
+                onMemoryCreated={(momentId) =>
+                  console.log("Memory created:", momentId)
+                }
+              />
+            </div>
           </div>
         </div>
       )}
@@ -186,7 +240,7 @@ export default function Page() {
       {hasResults && (
         <div className="max-w-6xl mx-auto p-8 space-y-6 relative z-10">
           {/* Compact Header */}
-          <div className="text-center pt-4">
+          <div className="flex items-center justify-between pt-4">
             <h1 className="text-4xl font-bold gradient-text">Memora</h1>
           </div>
 
@@ -194,49 +248,79 @@ export default function Page() {
           <div className="glass rounded-xl p-4 space-y-3 glow">
             <div className="flex gap-2 items-center flex-wrap">
               <MicButton onText={runQa} disabled={loading || transcribing} />
-              <label className={`px-4 py-2 rounded-lg font-medium cursor-pointer transition-all duration-300 text-sm ${
-                transcribing 
-                  ? 'bg-gray-700 cursor-not-allowed opacity-50' 
-                  : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 glow-green'
-              } text-white`}>
-                {transcribing ? '⏳ Processing...' : '🎵 Upload'}
-                <input type="file" accept="audio/*,.mp3,.wav,.m4a,.webm" onChange={handleFileUpload} className="hidden" disabled={loading || transcribing} />
+              <label
+                className={`px-4 py-2 rounded-lg font-medium cursor-pointer transition-all duration-300 text-sm ${
+                  transcribing
+                    ? "bg-gray-700 cursor-not-allowed opacity-50"
+                    : "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 glow-green"
+                } text-white`}
+              >
+                {transcribing ? "⏳ Processing..." : "🎵 Upload"}
+                <input
+                  type="file"
+                  accept="audio/*,.mp3,.wav,.m4a,.webm"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  disabled={loading || transcribing}
+                />
               </label>
-              <input 
-                className="flex-1 min-w-[300px] glass border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
-                placeholder="Ask another question..." 
-                value={text} 
-                onChange={(e) => setText(e.target.value)} 
+              <input
+                className="flex-1 min-w-[300px] glass border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                placeholder="Ask another question..."
+                value={text}
+                onChange={(e) => setText(e.target.value)}
                 disabled={transcribing}
-                onKeyDown={(e) => e.key === 'Enter' && text && !loading && !transcribing && runQa(text)}
+                onKeyDown={(e) =>
+                  e.key === "Enter" &&
+                  text &&
+                  !loading &&
+                  !transcribing &&
+                  runQa(text)
+                }
               />
-              <button 
+              <button
                 className={`px-5 py-2 rounded-lg font-medium transition-all duration-300 ${
                   !text || loading || transcribing
-                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white glow-purple'
+                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+                    : "bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white glow-purple"
                 }`}
-                onClick={() => runQa(text)} 
+                onClick={() => runQa(text)}
                 disabled={!text || loading || transcribing}
               >
-                {loading ? '🔍' : '✨ Ask'}
+                {loading ? "🔍" : "✨ Ask"}
               </button>
             </div>
-            
+
             {transcriptionStatus && (
               <div className="glass rounded-lg p-3 border border-blue-500/30 shimmer">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>
-                  <span className="text-blue-400 text-sm">{transcriptionStatus}</span>
+                  <span className="text-blue-400 text-sm">
+                    {transcriptionStatus}
+                  </span>
                 </div>
               </div>
             )}
+
+            {/* Build Memory Button */}
+            <div className="pt-2 flex justify-center">
+              <BuildMemoryButton
+                onMemoryCreated={(momentId) =>
+                  console.log("Memory created:", momentId)
+                }
+              />
+            </div>
           </div>
 
           {/* Results */}
           <AnswerCard answer={answer} loading={loading} />
           <EvidenceGallery items={evidence} />
-          <DebugPanel plan={plan} dsl={dsl} timings={timings} highlights={highlights} />
+          <DebugPanel
+            plan={plan}
+            dsl={dsl}
+            timings={timings}
+            highlights={highlights}
+          />
         </div>
       )}
     </main>
