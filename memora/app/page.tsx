@@ -98,11 +98,19 @@ export default function Page() {
       const execRes = await fetch("/api/exec", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planJson.plan }),
+        body: JSON.stringify({ 
+          plan: planJson.plan,
+          queryText: q  // Pass original query for hybrid search
+        }),
       });
       const execJson = await execRes.json();
       setDsl(execJson.dsl);
       setHighlights(execJson.highlights || []);
+      
+      // Store file content if found
+      if (execJson.fileContent) {
+        console.log('[Search] Found matching file content:', execJson.fileContent.file_name);
+      }
 
       const evRes = await fetch("/api/evidence", {
         method: "POST",
@@ -120,6 +128,7 @@ export default function Page() {
           hit: execJson.hit,
           highlights: execJson.highlights,
           evidence: evJson.evidence,
+          fileContent: execJson.fileContent,  // Include file content for better answers
         }),
       });
       const ansJson = await ansRes.json();

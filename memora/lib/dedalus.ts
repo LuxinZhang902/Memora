@@ -86,9 +86,27 @@ export async function composeAnswer(input: {
   hit: any;
   highlights: string[];
   evidence: { kind: string; name: string }[];
+  fileContent?: any;
 }): Promise<GroundedAnswer> {
   const model = process.env.DEDALUS_ANSWER_MODEL || 'gpt-4o-mini'; // Use compatible model name
-  const sys = `Answer strictly in 2 sentences. Use only provided facts. If unknown, say you can't tell.`;
+  
+  console.log('[ComposeAnswer] ========== COMPOSING ANSWER ==========');
+  console.log('[ComposeAnswer] Query:', input.query);
+  console.log('[ComposeAnswer] Has hit:', !!input.hit);
+  console.log('[ComposeAnswer] File content available:', !!input.fileContent);
+  
+  if (input.fileContent) {
+    console.log('[ComposeAnswer] *** FILE CONTENT FOUND ***');
+    console.log('[ComposeAnswer] File name:', input.fileContent.file_name);
+    console.log('[ComposeAnswer] Has extracted_text:', !!input.fileContent.extracted_text);
+    if (input.fileContent.extracted_text) {
+      console.log('[ComposeAnswer] Text preview:', input.fileContent.extracted_text.substring(0, 150));
+    }
+  } else {
+    console.log('[ComposeAnswer] *** NO FILE CONTENT ***');
+  }
+  
+  const sys = `Answer strictly in 2 sentences. Use only provided facts. If unknown, say you can't tell. If the answer comes from a file, quote the relevant content.`;
   const facts = {
     title: input.hit?._source?.title,
     text: input.hit?._source?.text,
@@ -97,6 +115,13 @@ export async function composeAnswer(input: {
     location: input.hit?._source?.geo,
     highlights: input.highlights,
     evidence: input.evidence?.map((e) => ({ kind: e.kind, name: e.name })),
+    // Include file content if available
+    file_content: input.fileContent ? {
+      file_name: input.fileContent.file_name,
+      extracted_text: input.fileContent.extracted_text,
+      created_at: input.fileContent.created_at,
+      metadata: input.fileContent.metadata,
+    } : undefined,
   };
   
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
