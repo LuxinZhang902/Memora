@@ -44,10 +44,14 @@ export default function MicButton({ onText, disabled }: Props) {
   return (
     <button
       onClick={() => (recording ? stop() : start())}
-      className={`px-4 py-2 rounded-md font-medium ${recording ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'}`}
+      className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+        recording 
+          ? 'bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white pulse-glow animate-pulse' 
+          : 'bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white glow'
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       disabled={disabled}
     >
-      {recording ? 'Stop' : 'Speak'}
+      {recording ? '🔴 Stop Recording' : '🎤 Speak'}
     </button>
   );
 }

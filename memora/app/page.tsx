@@ -102,31 +102,143 @@ export default function Page() {
     }
   };
 
+  const hasResults = answer || loading;
+
   return (
-    <main className="max-w-3xl mx-auto p-6 space-y-4">
-      <h1 className="text-2xl font-bold">Memora</h1>
-      <p className="text-gray-600">Make personal memories and life admin instantly answerable—with verifiable evidence—while staying private by default.</p>
-      <div className="space-y-2">
-        <div className="flex gap-3 items-center">
-          <MicButton onText={runQa} disabled={loading || transcribing} />
-          <label className={`px-4 py-2 rounded cursor-pointer ${
-            transcribing ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
-          } text-white`}>
-            {transcribing ? 'Processing...' : 'Upload Audio'}
-            <input type="file" accept="audio/*,.mp3,.wav,.m4a,.webm" onChange={handleFileUpload} className="hidden" disabled={loading || transcribing} />
-          </label>
-          <input className="flex-1 border rounded px-3 py-2" placeholder="Type a question…" value={text} onChange={(e) => setText(e.target.value)} disabled={transcribing} />
-          <button className="px-4 py-2 bg-indigo-600 text-white rounded" onClick={() => runQa(text)} disabled={!text || loading || transcribing}>Ask</button>
-        </div>
-        {transcriptionStatus && (
-          <div className="text-sm text-blue-600 italic px-2">
-            {transcriptionStatus}
-          </div>
-        )}
+    <main className="min-h-screen relative overflow-hidden">
+      {/* Animated background particles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-2000"></div>
       </div>
-      <AnswerCard answer={answer} loading={loading} />
-      <EvidenceGallery items={evidence} />
-      <DebugPanel plan={plan} dsl={dsl} timings={timings} highlights={highlights} />
+
+      {/* Centered Layout - Before Results */}
+      {!hasResults && (
+        <div className="min-h-screen flex items-center justify-center p-8 relative z-10">
+          <div className="max-w-4xl w-full space-y-12">
+            {/* Header */}
+            <div className="text-center space-y-6">
+              <h1 className="text-7xl font-bold gradient-text">Memora</h1>
+              <p className="text-gray-400 text-xl max-w-2xl mx-auto">
+                Make personal memories and life admin instantly answerable—with verifiable evidence—while staying private by default.
+              </p>
+            </div>
+
+            {/* Input Section - Centered */}
+            <div className="glass rounded-2xl p-8 space-y-4 glow">
+              <div className="flex gap-3 items-center flex-wrap justify-center">
+                <MicButton onText={runQa} disabled={loading || transcribing} />
+                <label className={`px-6 py-3 rounded-xl font-medium cursor-pointer transition-all duration-300 ${
+                  transcribing 
+                    ? 'bg-gray-700 cursor-not-allowed opacity-50' 
+                    : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 glow-green'
+                } text-white`}>
+                  {transcribing ? '⏳ Processing...' : '🎵 Upload Audio'}
+                  <input type="file" accept="audio/*,.mp3,.wav,.m4a,.webm" onChange={handleFileUpload} className="hidden" disabled={loading || transcribing} />
+                </label>
+                <input 
+                  className="flex-1 min-w-[350px] max-w-md glass border border-gray-700 rounded-xl px-5 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-center" 
+                  placeholder="When is the last time I renew my driver license?" 
+                  value={text} 
+                  onChange={(e) => setText(e.target.value)} 
+                  disabled={transcribing}
+                  onKeyDown={(e) => e.key === 'Enter' && text && !loading && !transcribing && runQa(text)}
+                />
+                <button 
+                  className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                    !text || loading || transcribing
+                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white glow-purple'
+                  }`}
+                  onClick={() => runQa(text)} 
+                  disabled={!text || loading || transcribing}
+                >
+                  {loading ? '🔍 Searching...' : '✨ Ask'}
+                </button>
+              </div>
+              
+              {/* Transcription Status */}
+              {transcriptionStatus && (
+                <div className="glass rounded-lg p-4 border border-blue-500/30 shimmer">
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>
+                    <span className="text-blue-400 font-medium">{transcriptionStatus}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Transcribed text preview */}
+              {text && transcribing && (
+                <div className="glass rounded-lg p-4 border border-purple-500/30">
+                  <div className="text-purple-300 font-mono text-sm text-center">
+                    {text}
+                    <span className="inline-block w-1 h-4 bg-purple-400 ml-1 animate-pulse"></span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Top Layout - After Results */}
+      {hasResults && (
+        <div className="max-w-6xl mx-auto p-8 space-y-6 relative z-10">
+          {/* Compact Header */}
+          <div className="text-center pt-4">
+            <h1 className="text-4xl font-bold gradient-text">Memora</h1>
+          </div>
+
+          {/* Compact Input Section - Top */}
+          <div className="glass rounded-xl p-4 space-y-3 glow">
+            <div className="flex gap-2 items-center flex-wrap">
+              <MicButton onText={runQa} disabled={loading || transcribing} />
+              <label className={`px-4 py-2 rounded-lg font-medium cursor-pointer transition-all duration-300 text-sm ${
+                transcribing 
+                  ? 'bg-gray-700 cursor-not-allowed opacity-50' 
+                  : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 glow-green'
+              } text-white`}>
+                {transcribing ? '⏳ Processing...' : '🎵 Upload'}
+                <input type="file" accept="audio/*,.mp3,.wav,.m4a,.webm" onChange={handleFileUpload} className="hidden" disabled={loading || transcribing} />
+              </label>
+              <input 
+                className="flex-1 min-w-[300px] glass border border-gray-700 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
+                placeholder="Ask another question..." 
+                value={text} 
+                onChange={(e) => setText(e.target.value)} 
+                disabled={transcribing}
+                onKeyDown={(e) => e.key === 'Enter' && text && !loading && !transcribing && runQa(text)}
+              />
+              <button 
+                className={`px-5 py-2 rounded-lg font-medium transition-all duration-300 ${
+                  !text || loading || transcribing
+                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white glow-purple'
+                }`}
+                onClick={() => runQa(text)} 
+                disabled={!text || loading || transcribing}
+              >
+                {loading ? '🔍' : '✨ Ask'}
+              </button>
+            </div>
+            
+            {transcriptionStatus && (
+              <div className="glass rounded-lg p-3 border border-blue-500/30 shimmer">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>
+                  <span className="text-blue-400 text-sm">{transcriptionStatus}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Results */}
+          <AnswerCard answer={answer} loading={loading} />
+          <EvidenceGallery items={evidence} />
+          <DebugPanel plan={plan} dsl={dsl} timings={timings} highlights={highlights} />
+        </div>
+      )}
     </main>
   );
 }
