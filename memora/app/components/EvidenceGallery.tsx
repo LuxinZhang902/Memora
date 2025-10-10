@@ -8,13 +8,18 @@ export default function EvidenceGallery({ items }: Props) {
   if (!items?.length) return null;
   
   return (
-    <div className="glass rounded-2xl p-6 border border-green-500/30 space-y-4">
-      <div className="flex items-center gap-2">
-        <span className="text-2xl">📎</span>
-        <h3 className="text-lg font-semibold text-green-300">Evidence Gallery</h3>
-        <span className="px-2 py-1 glass border border-green-500/30 rounded text-green-400 text-xs">
-          {items.length} {items.length === 1 ? 'item' : 'items'}
-        </span>
+    <div className="glass rounded-2xl p-8 border border-gray-700 space-y-6 hover:border-gray-600 transition-all">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <span className="text-3xl">📎</span>
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-gray-400 uppercase tracking-wider">Evidence Gallery</h3>
+          <p className="text-sm text-gray-500">Source documents</p>
+        </div>
+        <div className="px-3 py-1 glass border border-gray-600 rounded-lg">
+          <span className="text-white font-semibold">{items.length}</span>
+          <span className="text-gray-400 text-sm ml-1">{items.length === 1 ? 'item' : 'items'}</span>
+        </div>
       </div>
       
       <div className="flex gap-4 overflow-x-auto pb-2">
