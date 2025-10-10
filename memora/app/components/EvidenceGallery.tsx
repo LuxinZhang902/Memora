@@ -41,7 +41,7 @@ export default function EvidenceGallery({ items }: Props) {
           };
 
           return (
-          <div key={idx} className="min-w-[160px] max-w-[160px] flex-shrink-0">
+          <div key={idx} className="min-w-[280px] max-w-[280px] flex-shrink-0">
             <a 
               href={it.signedUrl} 
               target="_blank" 
@@ -53,10 +53,10 @@ export default function EvidenceGallery({ items }: Props) {
                 <img 
                   src={it.thumbUrl || it.signedUrl} 
                   alt={it.name} 
-                  className="h-16 w-full object-cover rounded group-hover:scale-105 transition-transform duration-300" 
+                  className="h-40 w-full object-cover rounded group-hover:scale-105 transition-transform duration-300" 
                 />
               ) : (
-                <div className="h-16 flex flex-col items-center justify-center bg-gray-800/50 rounded text-sm text-gray-400 group-hover:text-white transition-colors">
+                <div className="h-40 flex flex-col items-center justify-center bg-gray-800/50 rounded text-sm text-gray-400 group-hover:text-white transition-colors">
                   <div className="text-xl mb-1">📄</div>
                   <div className="text-xs text-gray-500">{getFileType(it.mime, it.name)}</div>
                 </div>
