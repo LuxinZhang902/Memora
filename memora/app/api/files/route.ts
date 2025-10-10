@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
         artifactId: source.artifact_id,
         momentId: source.moment_id,
         fileName: source.file_name,
+        description: source.description,
         fileType: source.file_type,
         fileCategory: source.file_category,
         mimeType: source.mime_type,

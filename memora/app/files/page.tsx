@@ -28,6 +28,7 @@ interface FileItem {
   artifactId: string;
   momentId: string;
   fileName: string;
+  description?: string;
   fileType: string;
   fileCategory: string;
   mimeType: string;
@@ -47,7 +48,9 @@ export default function FilesPage() {
   const [total, setTotal] = useState(0);
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [editingName, setEditingName] = useState(false);
+  const [editingDescription, setEditingDescription] = useState(false);
   const [newFileName, setNewFileName] = useState('');
+  const [newDescription, setNewDescription] = useState('');
 
   useEffect(() => {
     fetchFiles();
@@ -138,6 +141,29 @@ export default function FilesPage() {
     } catch (error) {
       console.error('Update error:', error);
       alert('Failed to update file name');
+    }
+  };
+
+  const handleUpdateDescription = async () => {
+    if (!selectedFile) return;
+    
+    try {
+      const response = await fetch(`/api/files/${selectedFile.contentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: newDescription }),
+      });
+      
+      if (response.ok) {
+        setEditingDescription(false);
+        setSelectedFile({ ...selectedFile, description: newDescription });
+        fetchFiles();
+      } else {
+        alert('Failed to update description');
+      }
+    } catch (error) {
+      console.error('Update error:', error);
+      alert('Failed to update description');
     }
   };
 
@@ -371,11 +397,59 @@ export default function FilesPage() {
                 onClick={() => {
                   setSelectedFile(null);
                   setEditingName(false);
+                  setEditingDescription(false);
                 }}
                 className="text-gray-400 hover:text-white transition-colors text-2xl"
               >
                 ×
               </button>
+            </div>
+
+            {/* Description Section */}
+            <div className="bg-slate-950/60 rounded-lg p-4 border-2 border-slate-700 mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-300">Description</h3>
+                {!editingDescription && (
+                  <button
+                    onClick={() => {
+                      setEditingDescription(true);
+                      setNewDescription(selectedFile.description || '');
+                    }}
+                    className="text-gray-400 hover:text-purple-400 transition-colors text-sm"
+                  >
+                    ✏️ Edit
+                  </button>
+                )}
+              </div>
+              {editingDescription ? (
+                <div className="space-y-2">
+                  <textarea
+                    value={newDescription}
+                    onChange={(e) => setNewDescription(e.target.value)}
+                    className="w-full bg-slate-950/60 border-2 border-purple-500 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[100px]"
+                    placeholder="Add a description for this file..."
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleUpdateDescription}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
+                    >
+                      ✓ Save
+                    </button>
+                    <button
+                      onClick={() => setEditingDescription(false)}
+                      className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm"
+                    >
+                      ✕ Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-400 text-sm">
+                  {selectedFile.description || 'No description added yet. Click Edit to add one.'}
+                </p>
+              )}
             </div>
 
             {/* Details Grid */}
@@ -525,6 +599,7 @@ export default function FilesPage() {
                 onClick={() => {
                   setSelectedFile(null);
                   setEditingName(false);
+                  setEditingDescription(false);
                 }}
                 className="px-6 py-3 rounded-lg bg-slate-800 border-2 border-slate-600 text-gray-200 hover:text-white hover:bg-slate-700 hover:border-slate-500 transition-all font-medium"
               >

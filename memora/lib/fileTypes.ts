@@ -203,6 +203,7 @@ export interface FileContentDocument {
   
   // File metadata
   file_name: string;
+  description?: string;
   file_type: FileType;
   file_category: FileCategory;
   mime_type: string;

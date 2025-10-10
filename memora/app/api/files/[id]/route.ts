@@ -74,25 +74,34 @@ export async function PATCH(
   try {
     const { id } = params;
     const body = await request.json();
-    const { fileName } = body;
+    const { fileName, description } = body;
 
-    if (!fileName) {
+    if (!fileName && !description) {
       return NextResponse.json(
-        { error: 'fileName is required' },
+        { error: 'At least one field (fileName or description) is required' },
         { status: 400 }
       );
     }
 
-    console.log(`[FilesAPI] Updating file ${id}: ${fileName}`);
+    console.log(`[FilesAPI] Updating file ${id}`);
+
+    const updateDoc: any = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (fileName) {
+      updateDoc.file_name = fileName;
+    }
+
+    if (description !== undefined) {
+      updateDoc.description = description;
+    }
 
     await client.update({
       index: FILE_CONTENT_INDEX,
       id,
       body: {
-        doc: {
-          file_name: fileName,
-          updated_at: new Date().toISOString(),
-        },
+        doc: updateDoc,
       },
       refresh: true,
     });

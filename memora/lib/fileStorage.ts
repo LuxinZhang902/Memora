@@ -74,6 +74,7 @@ export async function createFileContentIndex() {
           
           // File info
           file_name: { type: 'text', fields: { keyword: { type: 'keyword' } } },
+          description: { type: 'text' },
           file_type: { type: 'keyword' },
           file_category: { type: 'keyword' },
           mime_type: { type: 'keyword' },
