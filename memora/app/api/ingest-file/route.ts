@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ingestFile, createFileContentIndex } from '@/lib/fileStorage';
 import { upsertMoment, indexNameFromPrefix } from '@/lib/es';
+import { uploadFile } from '@/lib/gcs';
 import { Buffer } from 'buffer';
 
 export async function POST(request: NextRequest) {
@@ -37,9 +38,18 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     
-    // Generate GCS path (in production, upload to GCS first)
+    // Generate GCS path
     const timestamp = new Date().toISOString().split('T')[0];
     const gcsPath = `gs://${process.env.GCS_BUCKET}/users/${userId}/moments/${momentId}/files/${file.name}`;
+    
+    // Upload file to Google Cloud Storage
+    try {
+      await uploadFile(buffer, gcsPath, file.type);
+      console.log(`[IngestFile] Uploaded to GCS: ${gcsPath}`);
+    } catch (gcsError: any) {
+      console.warn(`[IngestFile] GCS upload failed (continuing anyway): ${gcsError.message}`);
+      // Continue with ingestion even if GCS upload fails
+    }
     
     // Ingest file with content extraction
     const result = await ingestFile({

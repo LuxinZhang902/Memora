@@ -46,6 +46,8 @@ export default function FilesPage() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [newFileName, setNewFileName] = useState('');
 
   useEffect(() => {
     fetchFiles();
@@ -94,6 +96,55 @@ export default function FilesPage() {
       case 'code': return '💻';
       default: return '📎';
     }
+  };
+
+  const handleDeleteFile = async (fileId: string) => {
+    if (!confirm('Are you sure you want to delete this file?')) return;
+    
+    try {
+      const response = await fetch(`/api/files/${fileId}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        setSelectedFile(null);
+        fetchFiles();
+      } else {
+        alert('Failed to delete file');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('Failed to delete file');
+    }
+  };
+
+  const handleUpdateFileName = async () => {
+    if (!selectedFile || !newFileName.trim()) return;
+    
+    try {
+      const response = await fetch(`/api/files/${selectedFile.contentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: newFileName }),
+      });
+      
+      if (response.ok) {
+        setEditingName(false);
+        setSelectedFile({ ...selectedFile, fileName: newFileName });
+        fetchFiles();
+      } else {
+        alert('Failed to update file name');
+      }
+    } catch (error) {
+      console.error('Update error:', error);
+      alert('Failed to update file name');
+    }
+  };
+
+  const handleOpenFile = (file: FileItem) => {
+    // Open file via serve endpoint (generates signed GCS URL)
+    const serveUrl = `/api/files/serve/${file.contentId}`;
+    window.open(serveUrl, '_blank');
   };
 
   const getCategoryColor = (category: string) => {
@@ -270,17 +321,57 @@ export default function FilesPage() {
           >
             {/* Header */}
             <div className="flex items-start justify-between mb-6">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-1">
                 <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${getCategoryColor(selectedFile.fileCategory)} flex items-center justify-center text-3xl`}>
                   {getFileIcon(selectedFile.fileCategory)}
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-white mb-1">{selectedFile.fileName}</h2>
-                  <p className="text-gray-400">{selectedFile.mimeType}</p>
+                <div className="flex-1">
+                  {editingName ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={newFileName}
+                        onChange={(e) => setNewFileName(e.target.value)}
+                        className="flex-1 bg-slate-950/60 border-2 border-purple-500 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        autoFocus
+                        onKeyPress={(e) => e.key === 'Enter' && handleUpdateFileName()}
+                      />
+                      <button
+                        onClick={handleUpdateFileName}
+                        className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        onClick={() => setEditingName(false)}
+                        className="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-2xl font-bold text-white">{selectedFile.fileName}</h2>
+                      <button
+                        onClick={() => {
+                          setEditingName(true);
+                          setNewFileName(selectedFile.fileName);
+                        }}
+                        className="text-gray-400 hover:text-purple-400 transition-colors"
+                        title="Edit name"
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                  )}
+                  <p className="text-gray-400 mt-1">{selectedFile.mimeType}</p>
                 </div>
               </div>
               <button
-                onClick={() => setSelectedFile(null)}
+                onClick={() => {
+                  setSelectedFile(null);
+                  setEditingName(false);
+                }}
                 className="text-gray-400 hover:text-white transition-colors text-2xl"
               >
                 ×
@@ -414,10 +505,27 @@ export default function FilesPage() {
               </div>
             </div>
 
-            {/* Close Button */}
-            <div className="mt-6 flex justify-end">
+            {/* Action Buttons */}
+            <div className="mt-6 flex justify-between">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleOpenFile(selectedFile)}
+                  className="px-6 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-all font-medium flex items-center gap-2"
+                >
+                  <span>📂</span> Open File
+                </button>
+                <button
+                  onClick={() => handleDeleteFile(selectedFile.contentId)}
+                  className="px-6 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-all font-medium flex items-center gap-2"
+                >
+                  <span>🗑️</span> Delete
+                </button>
+              </div>
               <button
-                onClick={() => setSelectedFile(null)}
+                onClick={() => {
+                  setSelectedFile(null);
+                  setEditingName(false);
+                }}
                 className="px-6 py-3 rounded-lg bg-slate-800 border-2 border-slate-600 text-gray-200 hover:text-white hover:bg-slate-700 hover:border-slate-500 transition-all font-medium"
               >
                 Close

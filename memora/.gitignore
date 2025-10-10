@@ -22,6 +22,9 @@ gcp-key.json
 *-service-account.json
 *.json.key
 application_default_credentials.json
+memora-gcs-key.json
+*-gcs-key.json
+*.iam.gserviceaccount.com.json
 
 # Logs
 *.log
@@ -64,3 +67,12 @@ Thumbs.db
 .turbo
 .vercel
 .convex
+
+# Test files and folders
+test_audios/
+test_docs/
+test_audio/
+test_doc/
+
+# Lock files (use npm ci for reproducible builds)
+package-lock.json

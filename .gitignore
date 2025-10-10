@@ -1,0 +1,13 @@
+# Test folders
+test_audios/
+test_docs/
+test_audio/
+test_doc/
+
+# Google Cloud credentials
+*.json
+*-gcs-key.json
+*.iam.gserviceaccount.com.json
+
+# OS files
+.DS_Store
