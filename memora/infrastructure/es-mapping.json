@@ -1,0 +1,31 @@
+{
+  "mappings": {
+    "properties": {
+      "moment_id": { "type": "keyword" },
+      "user_id":   { "type": "keyword" },
+      "timestamp": { "type": "date" },
+      "type":      { "type": "keyword" }, 
+      "language":  { "type": "keyword" },
+      "title":     { "type": "text", "fields": { "kw": { "type": "keyword" }}},
+      "text":      { "type": "text" },
+      "text_en":   { "type": "text" },
+      "entities":  { "type": "keyword" },
+      "geo": { "properties": {
+        "city":    { "type": "keyword" },
+        "country": { "type": "keyword" }
+      }},
+      "tags":   { "type": "keyword" },
+      "vector": { "type": "dense_vector", "dims": 1024, "similarity": "cosine" },
+      "artifacts": {
+        "type": "nested",
+        "properties": {
+          "kind":     { "type": "keyword" },
+          "name":     { "type": "keyword" },
+          "gcs_path": { "type": "keyword" },
+          "thumb":    { "type": "keyword" },
+          "mime":     { "type": "keyword" }
+        }
+      }
+    }
+  }
+}
