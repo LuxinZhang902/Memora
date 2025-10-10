@@ -30,7 +30,8 @@ export function middleware(req: NextRequest) {
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('Referrer-Policy', 'no-referrer');
   res.headers.set('X-Frame-Options', 'DENY');
-  res.headers.set('Permissions-Policy', 'microphone=()');
+  // Allow microphone access for voice input
+  res.headers.set('Permissions-Policy', 'microphone=(self)');
   return res;
 }
 
