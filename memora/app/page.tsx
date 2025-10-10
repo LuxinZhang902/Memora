@@ -21,6 +21,18 @@ export default function Page() {
   const [answer, setAnswer] = useState<GroundedAnswer | undefined>();
   const timings = useMemo(() => ({} as Record<string, number>), []);
 
+  const handleReset = () => {
+    setText("");
+    setAnswer(undefined);
+    setEvidence([]);
+    setHighlights([]);
+    setPlan(undefined);
+    setDsl(undefined);
+    setLoading(false);
+    setTranscribing(false);
+    setTranscriptionStatus("");
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -361,6 +373,20 @@ export default function Page() {
           {/* Results */}
           <AnswerCard answer={answer} loading={loading} />
           <EvidenceGallery items={evidence} />
+          
+          {/* New Search Button - Show after results */}
+          {answer && !loading && (
+            <div className="flex justify-center pt-6">
+              <button
+                onClick={handleReset}
+                className="px-8 py-4 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50 flex items-center gap-3"
+              >
+                <span className="text-xl">🔄</span>
+                <span>Ask Another Question</span>
+              </button>
+            </div>
+          )}
+          
           <DebugPanel
             plan={plan}
             dsl={dsl}
