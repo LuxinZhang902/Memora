@@ -1,5 +1,7 @@
 "use client";
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
+import AuthGuard from "./components/AuthGuard";
 import MicButton from "./components/MicButton";
 import AnswerCard from "./components/AnswerCard";
 import EvidenceGallery from "./components/EvidenceGallery";
@@ -133,13 +135,14 @@ export default function Page() {
   const hasResults = answer || loading;
 
   return (
-    <main className="min-h-screen relative overflow-hidden">
-      {/* Animated background particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-2000"></div>
-      </div>
+    <AuthGuard>
+      <main className="min-h-screen relative overflow-hidden">
+        {/* Animated background particles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-2000"></div>
+        </div>
 
       {/* Centered Layout - Before Results */}
       {!hasResults && (
@@ -152,6 +155,17 @@ export default function Page() {
                 Make personal memories and life admin instantly answerable—with
                 verifiable evidence—while staying private by default.
               </p>
+              
+              {/* Navigation Link */}
+              <div className="pt-2">
+                <Link
+                  href="/files"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-slate-800/50 transition-all text-sm"
+                >
+                  <span>📁</span>
+                  <span>View All Files</span>
+                </Link>
+              </div>
             </div>
 
             {/* Input Section - Centered */}
@@ -242,6 +256,13 @@ export default function Page() {
           {/* Compact Header */}
           <div className="flex items-center justify-between pt-4">
             <h1 className="text-4xl font-bold gradient-text">Memora</h1>
+            <Link
+              href="/files"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-slate-800/50 transition-all text-sm"
+            >
+              <span>📁</span>
+              <span>View All Files</span>
+            </Link>
           </div>
 
           {/* Compact Input Section - Top */}
@@ -324,5 +345,6 @@ export default function Page() {
         </div>
       )}
     </main>
+    </AuthGuard>
   );
 }

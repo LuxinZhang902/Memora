@@ -102,6 +102,14 @@ export async function createFileContentIndex() {
               transcript: { type: 'text' },
               ocr_text: { type: 'text' },
               detected_objects: { type: 'keyword' },
+              // EXIF and location data
+              camera_make: { type: 'keyword' },
+              camera_model: { type: 'keyword' },
+              date_taken: { type: 'date' },
+              gps_latitude: { type: 'float' },
+              gps_longitude: { type: 'float' },
+              gps_altitude: { type: 'float' },
+              location: { type: 'geo_point' },
             },
           },
           

@@ -252,6 +252,18 @@ export interface FileMetadata {
   detected_objects?: string[];
   ocr_text?: string;
   
+  // EXIF and location data
+  camera_make?: string;
+  camera_model?: string;
+  date_taken?: string;
+  gps_latitude?: number;
+  gps_longitude?: number;
+  gps_altitude?: number;
+  location?: {
+    lat: number;
+    lon: number;
+  };
+  
   // Audio/Video metadata
   duration_seconds?: number;
   bitrate?: number;

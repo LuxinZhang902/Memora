@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from 'react';
+import { getUserId } from '@/lib/user';
 
 type Props = {
   onMemoryCreated?: (momentId: string) => void;
@@ -36,7 +37,7 @@ export default function BuildMemoryButton({ onMemoryCreated }: Props) {
     try {
       // Create moment ID
       const momentId = `moment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const userId = 'user-' + Math.random().toString(36).substr(2, 9); // TODO: Get from auth
+      const userId = getUserId();
 
       // Upload each file
       for (let i = 0; i < files.length; i++) {
@@ -114,8 +115,8 @@ export default function BuildMemoryButton({ onMemoryCreated }: Props) {
 
       {/* Modal */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl border-2 border-purple-500/50 shadow-2xl shadow-purple-500/20 max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8 space-y-6">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl border-2 border-purple-500/50 shadow-2xl shadow-purple-500/20 max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8 space-y-6 relative z-[101]">
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">

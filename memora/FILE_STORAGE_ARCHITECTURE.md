@@ -53,9 +53,9 @@ This document describes the **production-grade file storage system** with conten
    - Metadata: Page count, word count, author
 
 2. **IMAGE** - JPG, PNG, GIF, HEIC
-   - Content extraction: ✅ OCR (Optical Character Recognition)
+   - Content extraction: ✅ OCR (Optical Character Recognition) + EXIF metadata
    - Searchable: ✅ Extracted text from images
-   - Metadata: Dimensions, format, detected objects
+   - Metadata: Dimensions, format, detected objects, GPS location, camera info
 
 3. **AUDIO** - MP3, WAV, M4A
    - Content extraction: ✅ Speech-to-Text transcription
@@ -130,6 +130,13 @@ This document describes the **production-grade file storage system** with conten
   ],
   "has_files": true,
   "file_count": 1,
+  "geo": {
+    "lat": 37.7749,
+    "lon": -122.4194,
+    "city": "San Francisco",
+    "state": "CA",
+    "country": "USA"
+  },
   "vector": [0.123, 0.456, ...]
 }
 ```
@@ -158,7 +165,17 @@ This document describes the **production-grade file storage system** with conten
     "page_count": 2,
     "word_count": 450,
     "author": "CA DMV",
-    "created_date": "2024-03-15"
+    "created_date": "2024-03-15",
+    "camera_make": "Apple",
+    "camera_model": "iPhone 14 Pro",
+    "date_taken": "2024-03-15T09:30:00Z",
+    "gps_latitude": 37.7749,
+    "gps_longitude": -122.4194,
+    "gps_altitude": 15.5,
+    "location": {
+      "lat": 37.7749,
+      "lon": -122.4194
+    }
   },
   
   "content_vector": [0.234, 0.567, ...],

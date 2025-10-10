@@ -3,12 +3,71 @@
  * 
  * Extracts searchable text from various file types:
  * - PDFs: Text extraction
- * - Images: OCR (Optical Character Recognition)
+ * - Images: OCR (Optical Character Recognition) + EXIF metadata
  * - Audio: Speech-to-Text transcription
  * - Documents: Text extraction from DOCX, etc.
  */
 
 import { FileCategory, FileType, FileMetadata } from './fileTypes';
+
+// ============================================================================
+// EXIF EXTRACTION
+// ============================================================================
+
+/**
+ * Extract EXIF metadata from images including GPS location
+ */
+export async function extractExifMetadata(buffer: Buffer): Promise<Partial<FileMetadata>> {
+  try {
+    const exifParser = require('exif-parser');
+    const parser = exifParser.create(buffer);
+    const result = parser.parse();
+    
+    const metadata: Partial<FileMetadata> = {};
+    
+    // Image dimensions
+    if (result.imageSize) {
+      metadata.width = result.imageSize.width;
+      metadata.height = result.imageSize.height;
+    }
+    
+    // Camera info
+    if (result.tags) {
+      if (result.tags.Make) {
+        metadata.camera_make = result.tags.Make;
+      }
+      if (result.tags.Model) {
+        metadata.camera_model = result.tags.Model;
+      }
+      if (result.tags.DateTimeOriginal) {
+        metadata.date_taken = new Date(result.tags.DateTimeOriginal * 1000).toISOString();
+      }
+    }
+    
+    // GPS location
+    if (result.tags && result.tags.GPSLatitude && result.tags.GPSLongitude) {
+      metadata.gps_latitude = result.tags.GPSLatitude;
+      metadata.gps_longitude = result.tags.GPSLongitude;
+      
+      // Create geo_point for Elasticsearch
+      metadata.location = {
+        lat: result.tags.GPSLatitude,
+        lon: result.tags.GPSLongitude,
+      };
+      
+      if (result.tags.GPSAltitude) {
+        metadata.gps_altitude = result.tags.GPSAltitude;
+      }
+      
+      console.log(`[EXIF] Extracted location: ${metadata.gps_latitude}, ${metadata.gps_longitude}`);
+    }
+    
+    return metadata;
+  } catch (error: any) {
+    console.error('[EXIF] Failed to extract metadata:', error.message);
+    return {};
+  }
+}
 
 // ============================================================================
 // CONTENT EXTRACTION INTERFACE
@@ -83,10 +142,21 @@ export async function extractImageContent(buffer: Buffer, mimeType: string): Pro
   const startTime = Date.now();
   
   try {
+    // Extract EXIF metadata first (including GPS location)
+    const exifMetadata = await extractExifMetadata(buffer);
+    
     // Option 1: Use OpenAI Vision API (GPT-4V)
     const openaiKey = process.env.OPENAI_API_KEY;
     if (openaiKey) {
-      return await extractImageWithOpenAI(buffer, mimeType);
+      const ocrResult = await extractImageWithOpenAI(buffer, mimeType);
+      // Merge EXIF metadata with OCR result
+      return {
+        ...ocrResult,
+        metadata: {
+          ...ocrResult.metadata,
+          ...exifMetadata,
+        },
+      };
     }
     
     // Option 2: Use Google Vision API
@@ -94,18 +164,19 @@ export async function extractImageContent(buffer: Buffer, mimeType: string): Pro
     // const client = new vision.ImageAnnotatorClient();
     // const [result] = await client.textDetection(buffer);
     
-    // For now, return placeholder
-    console.log('[IMAGE] OCR not yet implemented');
+    // If no OCR is available, still return EXIF metadata
+    console.log('[IMAGE] OCR not configured, returning EXIF metadata only');
     
     return {
-      success: false,
-      error: 'Image OCR not implemented. Configure OpenAI or Google Vision API.',
+      success: Object.keys(exifMetadata).length > 0,
+      metadata: exifMetadata as FileMetadata,
+      error: Object.keys(exifMetadata).length === 0 ? 'No EXIF data found' : undefined,
       processingTimeMs: Date.now() - startTime,
     };
   } catch (error: any) {
     return {
       success: false,
-      error: `Image OCR failed: ${error.message}`,
+      error: `Image processing failed: ${error.message}`,
       processingTimeMs: Date.now() - startTime,
     };
   }

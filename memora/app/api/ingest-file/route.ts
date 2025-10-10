@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     
     // Update parent moment document with artifact reference
     const momentIndex = indexNameFromPrefix();
-    const momentDoc = {
+    const momentDoc: any = {
       moment_id: momentId,
       user_id: userId,
       timestamp: new Date().toISOString(),
@@ -68,6 +68,16 @@ export async function POST(request: NextRequest) {
       file_count: 1,
       total_file_size: file.size,
     };
+    
+    // Propagate GPS location from file metadata to parent moment
+    const metadata = result.extractionResult?.metadata;
+    if (metadata?.gps_latitude && metadata?.gps_longitude) {
+      momentDoc.geo = {
+        lat: metadata.gps_latitude,
+        lon: metadata.gps_longitude,
+      };
+      console.log(`[IngestFile] Added GPS location to moment: ${metadata.gps_latitude}, ${metadata.gps_longitude}`);
+    }
     
     await upsertMoment(momentIndex, momentId, momentDoc);
     
