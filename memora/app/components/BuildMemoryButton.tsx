@@ -1,5 +1,6 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { getUserId } from '@/lib/user';
 
 type Props = {
@@ -13,6 +14,11 @@ export default function BuildMemoryButton({ onMemoryCreated }: Props) {
   const [files, setFiles] = useState<File[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -102,21 +108,9 @@ export default function BuildMemoryButton({ onMemoryCreated }: Props) {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
-  return (
-    <>
-      {/* Trigger Button */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className="px-6 py-3 rounded-xl font-medium bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white transition-all duration-300 glow-purple flex items-center gap-2"
-      >
-        <span className="text-xl">✨</span>
-        <span>Build My Memory</span>
-      </button>
-
-      {/* Modal */}
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl border-2 border-purple-500/50 shadow-2xl shadow-purple-500/20 max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8 space-y-6 relative z-[101]">
+  const modalContent = isOpen && mounted ? (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4">
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl border-2 border-purple-500/50 shadow-2xl shadow-purple-500/20 max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8 space-y-6 relative z-[10000]">
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -242,7 +236,21 @@ export default function BuildMemoryButton({ onMemoryCreated }: Props) {
             </div>
           </div>
         </div>
-      )}
+  ) : null;
+
+  return (
+    <>
+      {/* Trigger Button */}
+      <button
+        onClick={() => setIsOpen(true)}
+        className="px-6 py-3 rounded-xl font-medium bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white transition-all duration-300 glow-purple flex items-center gap-2"
+      >
+        <span className="text-xl">✨</span>
+        <span>Build My Memory</span>
+      </button>
+
+      {/* Modal Portal */}
+      {mounted && isOpen && createPortal(modalContent, document.body)}
     </>
   );
 }
