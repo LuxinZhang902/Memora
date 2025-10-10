@@ -109,50 +109,88 @@ export interface ExtractionResult {
 
 /**
  * Extract text from PDF files
- * In production, use: pdf-parse, pdfjs-dist, or AWS Textract
+ * Uses server-side API route for reliable extraction
  */
 export async function extractPdfContent(buffer: Buffer): Promise<ExtractionResult> {
   const startTime = Date.now();
   
   try {
-    // Try to import pdf-parse (may fail in Next.js due to webpack issues)
-    let pdfParseModule;
+    // Method 1: Use server-side API route (most reliable)
+    console.log('[PDF] Using server-side API for PDF extraction...');
     try {
-      pdfParseModule = await import('pdf-parse');
-    } catch (importError: any) {
-      console.warn('[PDF] pdf-parse import failed (webpack compatibility issue):', importError.message);
-      throw importError;
+      const formData = new FormData();
+      const blob = new Blob([buffer], { type: 'application/pdf' });
+      formData.append('file', blob, 'document.pdf');
+      
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      const response = await fetch(`${apiUrl}/api/extract-pdf`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.text) {
+          console.log(`[PDF] API extracted ${data.text.length} characters`);
+          return {
+            success: true,
+            text: data.text,
+            metadata: data.metadata || {},
+            processingTimeMs: Date.now() - startTime,
+          };
+        }
+      } else {
+        console.warn('[PDF] API extraction failed:', response.status);
+      }
+    } catch (apiError: any) {
+      console.warn('[PDF] API extraction error:', apiError.message);
     }
     
-    const pdfParse = (pdfParseModule as any).default || pdfParseModule;
-    const data = await pdfParse(buffer);
+    // Method 2: Try direct pdf-parse (may fail in webpack)
+    try {
+      console.log('[PDF] Trying direct pdf-parse...');
+      const pdfParse = require('pdf-parse');
+      const data = await pdfParse(buffer);
+      
+      const text = data.text?.trim() || '';
+      const wordCount = text.split(/\s+/).filter(Boolean).length;
+      
+      console.log(`[PDF] pdf-parse extracted ${data.numpages} pages, ${wordCount} words`);
+      
+      return {
+        success: true,
+        text,
+        metadata: {
+          page_count: data.numpages,
+          word_count: wordCount,
+          extraction_method: 'pdf_parse_direct'
+        },
+        processingTimeMs: Date.now() - startTime,
+      };
+    } catch (parseError: any) {
+      console.warn('[PDF] Direct pdf-parse failed:', parseError.message);
+    }
     
-    const text = data.text?.trim() || '';
-    const wordCount = text.split(/\s+/).filter(Boolean).length;
-    
-    console.log(`[PDF] Extracted ${data.numpages} pages, ${wordCount} words from PDF`);
-    
-    return {
-      success: true,
-      text,
-      metadata: {
-        page_count: data.numpages,
-        word_count: wordCount,
-      },
-      processingTimeMs: Date.now() - startTime,
-    };
-  } catch (error: any) {
-    console.error('[PDF] Extraction failed:', error.message);
-    
-    // If pdf-parse fails, mark as success but without text extraction
-    // File is still uploaded to GCS and can be opened
-    console.warn('[PDF] Continuing without text extraction - file upload will succeed');
+    // If all methods fail, return empty result
+    console.warn('[PDF] All extraction methods failed - file will be stored without text');
     return {
       success: true,
       text: '',
       metadata: {
         page_count: 0,
         word_count: 0,
+        extraction_method: 'none'
+      },
+      processingTimeMs: Date.now() - startTime,
+    };
+  } catch (error: any) {
+    console.error('[PDF] Extraction error:', error.message);
+    return {
+      success: true,
+      text: '',
+      metadata: {
+        extraction_method: 'error',
+        error: error.message
       },
       processingTimeMs: Date.now() - startTime,
     };

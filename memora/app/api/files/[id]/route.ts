@@ -28,31 +28,47 @@ export async function DELETE(
 
     console.log(`[FilesAPI] Deleting file: ${id}`);
 
-    // Get file metadata first to get GCS path
-    const response = await client.get({
-      index: FILE_CONTENT_INDEX,
-      id,
-    });
+    // Try to get file metadata first to get GCS path
+    let gcsPath: string | null = null;
+    try {
+      const response = await client.get({
+        index: FILE_CONTENT_INDEX,
+        id,
+      });
 
-    const fileDoc = response._source as any;
-    const gcsPath = fileDoc.gcs_path;
+      const fileDoc = response._source as any;
+      gcsPath = fileDoc.gcs_path;
+    } catch (getError: any) {
+      // File might not exist in ES, but could exist in GCS
+      console.warn(`[FilesAPI] File not found in ES: ${id}`);
+    }
 
     // Delete from GCS if path exists
     if (gcsPath) {
       try {
         await deleteFromGCS(gcsPath);
+        console.log(`[GCS] Deleted file ${gcsPath}`);
       } catch (gcsError: any) {
         console.warn(`[FilesAPI] GCS delete failed: ${gcsError.message}`);
         // Continue with ES deletion even if GCS fails
       }
     }
 
-    // Delete from Elasticsearch
-    await client.delete({
-      index: FILE_CONTENT_INDEX,
-      id,
-      refresh: true,
-    });
+    // Delete from Elasticsearch (ignore if not found)
+    try {
+      await client.delete({
+        index: FILE_CONTENT_INDEX,
+        id,
+        refresh: true,
+      });
+      console.log(`[ES] Deleted file ${id} from index`);
+    } catch (deleteError: any) {
+      if (deleteError.meta?.statusCode === 404) {
+        console.log(`[ES] File ${id} already deleted from index`);
+      } else {
+        throw deleteError;
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
