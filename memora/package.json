@@ -20,6 +20,7 @@
     "next": "^14.2.5",
     "nodemailer": "^6.9.7",
     "openai": "^4.73.0",
+    "pdf-parse": "^2.2.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
