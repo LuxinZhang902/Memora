@@ -115,9 +115,16 @@ export async function extractPdfContent(buffer: Buffer): Promise<ExtractionResul
   const startTime = Date.now();
   
   try {
-    // Use dynamic import to avoid webpack issues
-    const pdfParseModule = await import('pdf-parse') as any;
-    const pdfParse = pdfParseModule.default || pdfParseModule;
+    // Try to import pdf-parse (may fail in Next.js due to webpack issues)
+    let pdfParseModule;
+    try {
+      pdfParseModule = await import('pdf-parse');
+    } catch (importError: any) {
+      console.warn('[PDF] pdf-parse import failed (webpack compatibility issue):', importError.message);
+      throw importError;
+    }
+    
+    const pdfParse = (pdfParseModule as any).default || pdfParseModule;
     const data = await pdfParse(buffer);
     
     const text = data.text?.trim() || '';
@@ -135,11 +142,11 @@ export async function extractPdfContent(buffer: Buffer): Promise<ExtractionResul
       processingTimeMs: Date.now() - startTime,
     };
   } catch (error: any) {
-    console.error('[PDF] Extraction failed:', error);
+    console.error('[PDF] Extraction failed:', error.message);
     
     // If pdf-parse fails, mark as success but without text extraction
     // File is still uploaded to GCS and can be opened
-    console.warn('[PDF] Continuing without text extraction');
+    console.warn('[PDF] Continuing without text extraction - file upload will succeed');
     return {
       success: true,
       text: '',
@@ -172,14 +179,20 @@ export async function extractImageContent(buffer: Buffer, mimeType: string): Pro
     if (dedalusKey) {
       try {
         const ocrResult = await extractImageWithDedalus(buffer, mimeType);
-        // Merge EXIF metadata with OCR result
-        return {
-          ...ocrResult,
-          metadata: {
-            ...ocrResult.metadata,
-            ...exifMetadata,
-          },
-        };
+        // Check if OCR was successful
+        if (ocrResult.success) {
+          // Merge EXIF metadata with OCR result
+          return {
+            ...ocrResult,
+            metadata: {
+              ...ocrResult.metadata,
+              ...exifMetadata,
+            },
+          };
+        } else {
+          console.log('[IMAGE] DedalusLabs Vision returned failure, continuing without OCR');
+          // Continue to fallback below
+        }
       } catch (error: any) {
         console.log('[IMAGE] DedalusLabs Vision failed, continuing without OCR:', error.message);
         // Continue to fallback below
@@ -200,8 +213,12 @@ export async function extractImageContent(buffer: Buffer, mimeType: string): Pro
       processingTimeMs: Date.now() - startTime,
     };
   } catch (error: any) {
+    console.error('[IMAGE] Image processing failed:', error.message);
+    // Still return success=true since file upload should succeed
+    // even if EXIF/OCR extraction fails
     return {
-      success: false,
+      success: true,
+      metadata: {},
       error: `Image processing failed: ${error.message}`,
       processingTimeMs: Date.now() - startTime,
     };

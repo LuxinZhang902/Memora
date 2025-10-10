@@ -230,7 +230,9 @@ export async function ingestFile(options: IngestFileOptions): Promise<{
     extraction_status: extractionResult
       ? extractionResult.success
         ? 'success'
-        : 'failed'
+        : extractionResult.error
+        ? 'failed'
+        : 'success'
       : 'not_applicable',
     extraction_timestamp: extractionResult ? now : undefined,
     extraction_error: extractionResult?.error,
