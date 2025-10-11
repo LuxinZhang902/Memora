@@ -6,6 +6,7 @@ test_doc/
 
 # Documentation images
 memora/docs/images/
+Image Docs/
 
 # Google Cloud credentials
 *.json
