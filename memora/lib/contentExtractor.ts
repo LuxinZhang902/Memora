@@ -119,7 +119,7 @@ export async function extractPdfContent(buffer: Buffer): Promise<ExtractionResul
     console.log('[PDF] Using server-side API for PDF extraction...');
     try {
       const formData = new FormData();
-      const blob = new Blob([buffer], { type: 'application/pdf' });
+      const blob = new Blob([new Uint8Array(buffer)], { type: 'application/pdf' });
       formData.append('file', blob, 'document.pdf');
       
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
