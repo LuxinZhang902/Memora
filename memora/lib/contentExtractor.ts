@@ -314,7 +314,7 @@ export async function extractAudioContent(buffer: Buffer, filename: string): Pro
     
     // Create form data
     const formData = new FormData();
-    const blob = new Blob([buffer], { type: 'audio/mpeg' });
+    const blob = new Blob([new Uint8Array(buffer)], { type: 'audio/mpeg' });
     formData.append('file', blob, filename);
     formData.append('model', 'whisper-1');
     
