@@ -1,15 +1,12 @@
 {
-  "buildCommand": "cd memora && npm run build",
-  "devCommand": "cd memora && npm run dev",
-  "installCommand": "cd memora && npm install",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
   "framework": "nextjs",
   "regions": ["sfo1"],
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 60
     }
-  },
-  "env": {
-    "NODE_ENV": "production"
   }
 }
