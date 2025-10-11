@@ -167,7 +167,7 @@ export async function extractImageText(buffer: Buffer, mimeType: string): Promis
  */
 export async function transcribeAudio(buffer: Buffer, filename: string): Promise<string> {
   const formData = new FormData();
-  const blob = new Blob([buffer], { type: 'audio/mpeg' });
+  const blob = new Blob([new Uint8Array(buffer)], { type: 'audio/mpeg' });
   formData.append('file', blob, filename);
   formData.append('model', process.env.DEDALUS_STT_MODEL || 'whisper-1'); // Use compatible model name
   
