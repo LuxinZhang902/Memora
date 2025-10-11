@@ -5,13 +5,37 @@ const isGCSConfigured = () => {
   return !!(
     process.env.GCP_PROJECT_ID && 
     process.env.GCS_BUCKET && 
-    (process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.GCS_CREDENTIALS)
+    (process.env.GOOGLE_APPLICATION_CREDENTIALS || 
+     process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+     process.env.GCS_CREDENTIALS)
   );
 };
 
-const storage = isGCSConfigured() 
-  ? new Storage({ projectId: process.env.GCP_PROJECT_ID })
-  : null;
+// Initialize Storage with credentials
+const initStorage = () => {
+  if (!isGCSConfigured()) return null;
+
+  // For Vercel: use base64-encoded JSON credentials
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+    try {
+      const credentials = JSON.parse(
+        Buffer.from(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON, 'base64').toString()
+      );
+      return new Storage({
+        projectId: process.env.GCP_PROJECT_ID,
+        credentials,
+      });
+    } catch (error) {
+      console.error('[GCS] Failed to parse credentials JSON:', error);
+      return null;
+    }
+  }
+
+  // For local: use file path or default credentials
+  return new Storage({ projectId: process.env.GCP_PROJECT_ID });
+};
+
+const storage = initStorage();
 const bucketName = process.env.GCS_BUCKET || '';
 
 /**

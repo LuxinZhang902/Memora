@@ -1,9 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'standalone',
   experimental: {
     serverComponentsExternalPackages: ['@elastic/elasticsearch', '@google-cloud/storage'],
+  },
+  // Increase function timeout for file processing
+  serverRuntimeConfig: {
+    maxDuration: 60,
   },
 };
 
