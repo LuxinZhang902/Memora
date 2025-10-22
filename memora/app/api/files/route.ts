@@ -7,15 +7,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Client } from '@elastic/elasticsearch';
 
+const esHost = process.env.ES_HOST || 'http://localhost:9200';
+const isBonsai = esHost.includes('bonsai');
+
 const client = new Client({
-  node: process.env.ES_HOST || 'http://localhost:9200',
+  node: esHost,
   auth: { 
     username: process.env.ES_USERNAME || 'elastic', 
     password: process.env.ES_PASSWORD || 'changeme' 
   },
+  ...(isBonsai && {
+    headers: { 'Content-Type': 'application/json' },
+    compatibilityMode: '7',
+  }),
 });
 
 const FILE_CONTENT_INDEX = 'file-contents';
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {

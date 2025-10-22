@@ -6,12 +6,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Client } from '@elastic/elasticsearch';
 import { deleteFile as deleteFromGCS } from '@/lib/gcs';
 
+const esHost = process.env.ES_HOST || 'http://localhost:9200';
+const isBonsai = esHost.includes('bonsai');
+
 const client = new Client({
-  node: process.env.ES_HOST || 'http://localhost:9200',
+  node: esHost,
   auth: { 
     username: process.env.ES_USERNAME || 'elastic', 
     password: process.env.ES_PASSWORD || 'changeme' 
   },
+  ...(isBonsai && {
+    headers: { 'Content-Type': 'application/json' },
+    compatibilityMode: '7',
+  }),
 });
 
 const FILE_CONTENT_INDEX = 'file-contents';
