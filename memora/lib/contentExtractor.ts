@@ -109,86 +109,41 @@ export interface ExtractionResult {
 
 /**
  * Extract text from PDF files
- * Uses server-side API route for reliable extraction
+ * Uses pdf-parse library for reliable extraction
  */
 export async function extractPdfContent(buffer: Buffer): Promise<ExtractionResult> {
   const startTime = Date.now();
   
   try {
-    // Method 1: Use server-side API route (most reliable)
-    console.log('[PDF] Using server-side API for PDF extraction...');
-    try {
-      const formData = new FormData();
-      const blob = new Blob([new Uint8Array(buffer)], { type: 'application/pdf' });
-      formData.append('file', blob, 'document.pdf');
-      
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      const response = await fetch(`${apiUrl}/api/extract-pdf`, {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.text) {
-          console.log(`[PDF] API extracted ${data.text.length} characters`);
-          return {
-            success: true,
-            text: data.text,
-            metadata: data.metadata || {},
-            processingTimeMs: Date.now() - startTime,
-          };
-        }
-      } else {
-        console.warn('[PDF] API extraction failed:', response.status);
-      }
-    } catch (apiError: any) {
-      console.warn('[PDF] API extraction error:', apiError.message);
-    }
+    console.log('[PDF] Extracting text using pdf-parse...');
+    const pdfParse = require('pdf-parse');
+    const data = await pdfParse(buffer);
     
-    // Method 2: Try direct pdf-parse (may fail in webpack)
-    try {
-      console.log('[PDF] Trying direct pdf-parse...');
-      const pdfParse = require('pdf-parse');
-      const data = await pdfParse(buffer);
-      
-      const text = data.text?.trim() || '';
-      const wordCount = text.split(/\s+/).filter(Boolean).length;
-      
-      console.log(`[PDF] pdf-parse extracted ${data.numpages} pages, ${wordCount} words`);
-      
-      return {
-        success: true,
-        text,
-        metadata: {
-          page_count: data.numpages,
-          word_count: wordCount,
-          extraction_method: 'pdf_parse_direct'
-        },
-        processingTimeMs: Date.now() - startTime,
-      };
-    } catch (parseError: any) {
-      console.warn('[PDF] Direct pdf-parse failed:', parseError.message);
-    }
+    const text = data.text?.trim() || '';
+    const wordCount = text.split(/\s+/).filter(Boolean).length;
     
-    // If all methods fail, return empty result
-    console.warn('[PDF] All extraction methods failed - file will be stored without text');
+    console.log(`[PDF] Extracted ${data.numpages} pages, ${wordCount} words`);
+    
+    return {
+      success: true,
+      text,
+      metadata: {
+        page_count: data.numpages,
+        word_count: wordCount,
+        extraction_method: 'pdf_parse'
+      },
+      processingTimeMs: Date.now() - startTime,
+    };
+  } catch (error: any) {
+    console.error('[PDF] Extraction failed:', error.message);
+    
+    // Return empty result but mark as success so file is still stored
     return {
       success: true,
       text: '',
       metadata: {
         page_count: 0,
         word_count: 0,
-        extraction_method: 'none'
-      },
-      processingTimeMs: Date.now() - startTime,
-    };
-  } catch (error: any) {
-    console.error('[PDF] Extraction error:', error.message);
-    return {
-      success: true,
-      text: '',
-      metadata: {
         extraction_method: 'error',
         error: error.message
       },
