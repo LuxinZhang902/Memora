@@ -98,8 +98,8 @@ Memora searches through all your uploaded content—including text inside PDFs, 
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/yourusername/memora.git
-   cd memora/memora
+   git clone https://github.com/LuxinZhang902/Memora.git
+   cd Memora/memora
    ```
 
 2. **Install dependencies:**
