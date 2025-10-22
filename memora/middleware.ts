@@ -3,28 +3,18 @@ import { NextResponse, NextRequest } from 'next/server';
 export function middleware(req: NextRequest) {
   const res = NextResponse.next();
   
-  // Relaxed CSP for development, strict for production
-  const isDev = process.env.NODE_ENV === 'development';
-  
-  const csp = isDev
-    ? [
-        "default-src 'self'",
-        "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' https: data: blob:",
-        "media-src 'self' https: blob:",
-        "connect-src 'self' https: ws: wss:",
-        "frame-ancestors 'none'",
-      ].join('; ')
-    : [
-        "default-src 'self'",
-        "script-src 'self'",
-        "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' https: data: blob:",
-        "media-src 'self' https: blob:",
-        "connect-src 'self' https:",
-        "frame-ancestors 'none'",
-      ].join('; ');
+  // CSP configuration - allow inline scripts for Next.js
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' https: data: blob:",
+    "font-src 'self' data:",
+    "media-src 'self' https: blob:",
+    "connect-src 'self' https://api.dedaluslabs.ai https://api.fireworks.ai https://api.elevenlabs.io https://storage.googleapis.com https:",
+    "worker-src 'self' blob:",
+    "frame-ancestors 'none'",
+  ].join('; ');
 
   res.headers.set('Content-Security-Policy', csp);
   res.headers.set('X-Content-Type-Options', 'nosniff');
