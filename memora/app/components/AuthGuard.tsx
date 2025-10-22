@@ -18,6 +18,20 @@ export default function AuthGuard({ children }: Props) {
   }, []);
 
   const checkAuth = () => {
+    // Skip auth if SKIP_AUTH is enabled (for demo/hackathon)
+    if (process.env.NEXT_PUBLIC_SKIP_AUTH === 'true') {
+      const demoUser: User = {
+        user_id: 'demo-user',
+        email: 'demo@memora.app',
+        created_at: new Date().toISOString(),
+        is_verified: true,
+      };
+      setUser(demoUser);
+      setShowAuth(false);
+      setLoading(false);
+      return;
+    }
+
     const currentUser = getUser();
     if (currentUser) {
       setUser(currentUser);

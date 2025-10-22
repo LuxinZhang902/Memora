@@ -30,6 +30,8 @@ const client = new Client({
     username: process.env.ES_USERNAME || 'elastic', 
     password: process.env.ES_PASSWORD || 'changeme' 
   },
+  headers: { 'Content-Type': 'application/json' },
+  ...(process.env.ES_HOST?.includes('bonsai') && { compatibilityMode: '7' }),
 });
 
 // ============================================================================

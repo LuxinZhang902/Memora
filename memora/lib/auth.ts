@@ -13,6 +13,14 @@ const client = new Client({
     username: process.env.ES_USERNAME || 'elastic', 
     password: process.env.ES_PASSWORD || 'changeme' 
   },
+  // Compatibility settings for Bonsai/older ES versions
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  // Disable version check warnings
+  ...(process.env.ES_HOST?.includes('bonsai') && {
+    compatibilityMode: '7',
+  }),
 });
 
 const USERS_INDEX = 'memora-users';

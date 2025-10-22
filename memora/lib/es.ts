@@ -5,6 +5,8 @@ import { embedText } from './fireworks';
 const client = new Client({
   node: process.env.ES_HOST || 'http://localhost:9200',
   auth: { username: process.env.ES_USERNAME || 'elastic', password: process.env.ES_PASSWORD || 'changeme' },
+  headers: { 'Content-Type': 'application/json' },
+  ...(process.env.ES_HOST?.includes('bonsai') && { compatibilityMode: '7' }),
 });
 
 export function indexNameFromPrefix(prefix = process.env.ES_INDEX_PREFIX || 'life-moments', d = new Date()) {
