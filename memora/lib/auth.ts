@@ -440,19 +440,30 @@ export async function loginWithPassword(
   try {
     const normalizedEmail = email.toLowerCase();
 
+    console.log(`[Auth] Login attempt for: ${normalizedEmail}`);
+
     // Get user
     const user = await getUserByEmail(normalizedEmail);
     if (!user) {
+      console.log(`[Auth] User not found: ${normalizedEmail}`);
       return { success: false, error: 'Invalid email or password' };
     }
 
+    console.log(`[Auth] User found: ${normalizedEmail}, has password_hash: ${!!user.password_hash}`);
+
     // Check if user has a password set
     if (!user.password_hash) {
+      console.log(`[Auth] User has no password_hash`);
       return { success: false, error: 'Please use email code login for this account' };
     }
 
     // Verify password
-    if (!verifyPassword(password, user.password_hash)) {
+    console.log(`[Auth] Verifying password...`);
+    console.log(`[Auth] Stored hash: ${user.password_hash.substring(0, 20)}...`);
+    const isValid = verifyPassword(password, user.password_hash);
+    console.log(`[Auth] Password valid: ${isValid}`);
+    
+    if (!isValid) {
       return { success: false, error: 'Invalid email or password' };
     }
 

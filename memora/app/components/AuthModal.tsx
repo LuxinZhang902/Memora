@@ -25,18 +25,22 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: Props) {
     e.preventDefault();
     setError('');
 
+    // Trim inputs
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
     // Validation
-    if (!email || !password) {
+    if (!trimmedEmail || !trimmedPassword) {
       setError('Please fill in all fields');
       return;
     }
 
-    if (mode === 'signup' && password !== confirmPassword) {
+    if (mode === 'signup' && trimmedPassword !== confirmPassword.trim()) {
       setError('Passwords do not match');
       return;
     }
 
-    if (password.length < 8) {
+    if (trimmedPassword.length < 8) {
       setError('Password must be at least 8 characters');
       return;
     }
@@ -46,10 +50,12 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: Props) {
     try {
       const endpoint = mode === 'login' ? '/api/auth/password-login' : '/api/auth/password-signup';
       
+      console.log(`[AuthModal] ${mode} attempt for:`, trimmedEmail);
+      
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword }),
       });
 
       const data = await response.json();
