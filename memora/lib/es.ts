@@ -2,11 +2,16 @@ import { Client } from '@elastic/elasticsearch';
 import type { Artifact, QueryPlan } from './types';
 import { embedText } from './fireworks';
 
+const esHost = process.env.ES_HOST || 'http://localhost:9200';
+const isBonsai = esHost.includes('bonsai');
+
 const client = new Client({
-  node: process.env.ES_HOST || 'http://localhost:9200',
+  node: esHost,
   auth: { username: process.env.ES_USERNAME || 'elastic', password: process.env.ES_PASSWORD || 'changeme' },
-  headers: { 'Content-Type': 'application/json' },
-  ...(process.env.ES_HOST?.includes('bonsai') && { compatibilityMode: '7' }),
+  ...(isBonsai && {
+    headers: { 'Content-Type': 'application/json' },
+    compatibilityMode: '7',
+  }),
 });
 
 export function indexNameFromPrefix(prefix = process.env.ES_INDEX_PREFIX || 'life-moments', d = new Date()) {
