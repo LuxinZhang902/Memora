@@ -54,12 +54,12 @@ export interface Passcode {
 // ============================================================================
 
 export async function createAuthIndices() {
-  // Create users index
-  const usersExists = await client.indices.exists({ index: USERS_INDEX });
-  if (!usersExists) {
-    await client.indices.create({
-      index: USERS_INDEX,
-      body: {
+  try {
+    // Create users index
+    const usersExists = await client.indices.exists({ index: USERS_INDEX });
+    if (!usersExists) {
+      await client.indices.create({
+        index: USERS_INDEX,
         mappings: {
           properties: {
             user_id: { type: 'keyword' },
@@ -71,17 +71,15 @@ export async function createAuthIndices() {
             is_verified: { type: 'boolean' },
           },
         },
-      },
-    });
-    console.log('[Auth] Created users index');
-  }
+      });
+      console.log('[Auth] Created users index');
+    }
 
-  // Create passcodes index
-  const passcodesExists = await client.indices.exists({ index: PASSCODES_INDEX });
-  if (!passcodesExists) {
-    await client.indices.create({
-      index: PASSCODES_INDEX,
-      body: {
+    // Create passcodes index
+    const passcodesExists = await client.indices.exists({ index: PASSCODES_INDEX });
+    if (!passcodesExists) {
+      await client.indices.create({
+        index: PASSCODES_INDEX,
         mappings: {
           properties: {
             email: { type: 'keyword' },
@@ -92,9 +90,12 @@ export async function createAuthIndices() {
             used: { type: 'boolean' },
           },
         },
-      },
-    });
-    console.log('[Auth] Created passcodes index');
+      });
+      console.log('[Auth] Created passcodes index');
+    }
+  } catch (error: any) {
+    console.error('[Auth] Failed to create indices:', error.message);
+    throw error;
   }
 }
 
